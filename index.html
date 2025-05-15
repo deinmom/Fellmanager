@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fellmanager</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { max-width: 700px; margin: 2rem auto; font-family: sans-serif; }
+    .card { border: 1px solid #ccc; border-radius: 1rem; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    .header { font-size: 24px; font-weight: bold; text-align: center; margin-bottom: 1rem; }
+    .title { font-size: 18px; font-weight: bold; }
+    .wiki  { font-size: 14px; color: #555; margin: .5rem 0; }
+    .controls { display: flex; justify-content: space-between; align-items: center; }
+    .controls button { border: none; color: white; padding: .3rem .7rem; border-radius: 5px; cursor: pointer; }
+    .minus { background: #e53e3e; }
+    .plus  { background: #38a169; }
+  </style>
+  <!-- Supabase-JS via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+  <div class="header">Fellmanager</div>
+  <div id="container"></div>
+
+  <script>
+    // 1) Hier deine Supabase-Daten eingeben:
+    const SUPABASE_URL = "https://xyzabc.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGci...";
+    const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const container = document.getElementById("container");
+
+    // 2) Liste laden und anzeigen
+    async function loadFelle() {
+      const { data, error } = await supabase
+        .from("felle")
+        .select("*")
+        .order("serie", { ascending: true });
+      if (error) return console.error(error);
+      container.innerHTML = "";
+      data.forEach(fell => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <div class="title">${fell.hersteller} – ${fell.serie} ${fell.groesse}</div>
+          <div class="wiki">${fell.wiki}</div>
+          <div class="controls">
+            <div>Bestand: <strong>${fell.bestand}</strong></div>
+            <div>
+              <button class="minus">-1</button>
+              <button class="plus">+1</button>
+            </div>
+          </div>`;
+        // Button-Handler
+        card.querySelector(".minus").onclick = () => updateBestand(fell.id, -1);
+        card.querySelector(".plus").onclick  = () => updateBestand(fell.id, +1);
+        container.append(card);
+      });
+    }
+
+    // 3) Bestand aktualisieren
+    async function updateBestand(id, delta) {
+      await supabase
+        .from("felle")
+        .update({ bestand: supabase.raw("bestand + ?", [delta]) })
+        .eq("id", id);
+      loadFelle();
+    }
+
+    // Initial laden
+    loadFelle();
+  </script>
+</body>
+</html>

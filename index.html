@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Fellmanager</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body { max-width: 700px; margin: 2rem auto; font-family: sans-serif; }
     .card { border: 1px solid #ccc; border-radius: 1rem; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
@@ -15,66 +15,104 @@
     .minus { background: #e53e3e; }
     .plus  { background: #38a169; }
   </style>
-  <!-- Supabase-JS via CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-
   <div class="header">Fellmanager</div>
-  <div id="container"></div>
+  <div id="container">Lade Daten…</div>
 
   <script>
-    // 1) Deine Supabase-Zugangsdaten:
-    const SUPABASE_URL     = "https://owrfgjypnemsxonmbrpj.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93cmZnanlwbmVtc3hvbmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczMTUyOTgsImV4cCI6MjA2Mjg5MTI5OH0.X1PymyDZqNe_Plmao8U6gdqFKP70VrFtuZTesgyZMwg";
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1) Supabase-Daten (exakt so kopieren!)
+      const SUPABASE_URL     = 'https://owrfgjypnemsxonmbrpj.supabase.co';
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93cmZnanlwbmVtc3hvbmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczMTUyOTgsImV4cCI6MjA2Mjg5MTI5OH0.X1PymyDZqNe_Plmao8U6gdqFKP70VrFtuZTesgyZMwg';
 
-    const container = document.getElementById("container");
+      // DEBUG Logs: prüfe URL und Key zur Laufzeit
+      console.log("🚩 SUPABASE_URL:", SUPABASE_URL);
+      console.log("🚩 SUPABASE_ANON_KEY:", SUPABASE_ANON_KEY);
+      console.log("🚩 Key-Länge:", SUPABASE_ANON_KEY.length);
 
-    // 2) Liste laden und anzeigen
-    async function loadFelle() {
-      const { data, error } = await supabase
-        .from("felle")
-        .select("*")
-        .order("serie", { ascending: true });
-      if (error) {
-        console.error(error);
-        container.innerHTML = "<p style='color:red'>Fehler beim Laden der Daten.</p>";
-        return;
+      const headers = {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json'
+      };
+
+      const container = document.getElementById('container');
+
+      // Alle Felle laden
+      async function loadFelle() {
+        container.textContent = 'Lade Daten…';
+        try {
+          const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/felle?select=*&order=serie.asc`,
+            { headers }
+          );
+          console.log("GET /felle →", res.status, res.statusText);
+          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+          const data = await res.json();
+          container.innerHTML = data.length
+            ? ''
+            : '<p>Keine Einträge gefunden.</p>';
+          data.forEach(fell => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+              <div class="title">${fell.hersteller} – ${fell.serie} ${fell.groesse}</div>
+              <div class="wiki">${fell.wiki || ''}</div>
+              <div class="controls">
+                <div>Bestand: <strong>${fell.bestand}</strong></div>
+                <div>
+                  <button class="minus">-1</button>
+                  <button class="plus">+1</button>
+                </div>
+              </div>`;
+            card.querySelector('.minus').onclick = () => changeBestand(fell.id, -1);
+            card.querySelector('.plus').onclick  = () => changeBestand(fell.id, +1);
+            container.append(card);
+          });
+        } catch (err) {
+          console.error('Fehler beim Laden:', err);
+          container.innerHTML = `<p style="color:red">Fehler beim Laden der Daten:<br>${err.message}</p>`;
+        }
       }
-      container.innerHTML = "";
-      data.forEach(fell => {
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-          <div class="title">${fell.hersteller} – ${fell.serie} ${fell.groesse}</div>
-          <div class="wiki">${fell.wiki}</div>
-          <div class="controls">
-            <div>Bestand: <strong>${fell.bestand}</strong></div>
-            <div>
-              <button class="minus">-1</button>
-              <button class="plus">+1</button>
-            </div>
-          </div>`;
-        // Button-Handler
-        card.querySelector(".minus").onclick = () => updateBestand(fell.id, -1);
-        card.querySelector(".plus").onclick  = () => updateBestand(fell.id, +1);
-        container.append(card);
-      });
-    }
 
-    // 3) Bestand aktualisieren
-    async function updateBestand(id, delta) {
-      const { error } = await supabase
-        .from("felle")
-        .update({ bestand: supabase.raw("bestand + ?", [delta]) })
-        .eq("id", id);
-      if (error) console.error("Update-Fehler:", error);
+      // Bestand ändern
+      async function changeBestand(id, delta) {
+        try {
+          console.log('changeBestand aufgerufen für', id, 'mit delta', delta);
+          // aktuellen Bestand holen
+          const getRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/felle?select=bestand&id=eq.${encodeURIComponent(id)}`,
+            { headers }
+          );
+          console.log("GET Bestand →", getRes.status, getRes.statusText);
+          if (!getRes.ok) throw new Error(`${getRes.status} ${getRes.statusText}`);
+          const [{ bestand }] = await getRes.json();
+
+          // PATCH-Request durchführen
+          const newBestand = bestand + delta;
+          const patchRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/felle?id=eq.${encodeURIComponent(id)}`,
+            {
+              method: 'PATCH',
+              headers,
+              body: JSON.stringify({ bestand: newBestand })
+            }
+          );
+          console.log("PATCH /felle →", patchRes.status, patchRes.statusText);
+          if (!patchRes.ok) throw new Error(`${patchRes.status} ${patchRes.statusText}`);
+
+          // UI aktualisieren
+          loadFelle();
+        } catch (err) {
+          console.error('Update-Fehler:', err);
+          alert(`Update-Fehler: ${err.message}`);
+        }
+      }
+
+      // initial laden
       loadFelle();
-    }
-
-    // Initial laden
-    loadFelle();
+    });
   </script>
 </body>
 </html>

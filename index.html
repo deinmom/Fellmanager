@@ -15,8 +15,8 @@
     .minus { background: #e53e3e; }
     .plus  { background: #38a169; }
   </style>
-  <!-- Supabase-JS via CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Supabase UMD Bundle liefert global `supabase` -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
@@ -24,56 +24,63 @@
   <div id="container"></div>
 
   <script>
-    // 1) Deine Supabase-Zugangsdaten:
+    // 1) Supabase-Zugangsdaten
     const SUPABASE_URL     = "https://owrfgjypnemsxonmbrpj.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93cmZnanlwbmVtc3hvbmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczMTUyOTgsImV4cCI6MjA2Mjg5MTI5OH0.X1PymyDZqNe_Plmao8U6gdqFKP70VrFtuZTesgyZMwg";
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 2) Supabase-Client initialisieren (globale `supabase` nicht überschreiben)
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const container = document.getElementById("container");
 
-    // 2) Liste laden und anzeigen
+    // 3) Alle Felle laden und darstellen
     async function loadFelle() {
-      const { data, error } = await supabase
-        .from("felle")
-        .select("*")
-        .order("serie", { ascending: true });
-      if (error) {
-        console.error(error);
+      try {
+        const { data, error } = await client
+          .from("felle")
+          .select("*")
+          .order("serie", { ascending: true });
+        if (error) throw error;
+
+        container.innerHTML = "";
+        data.forEach(fell => {
+          const card = document.createElement("div");
+          card.className = "card";
+          card.innerHTML = `
+            <div class="title">${fell.hersteller} – ${fell.serie} ${fell.groesse}</div>
+            <div class="wiki">${fell.wiki}</div>
+            <div class="controls">
+              <div>Bestand: <strong>${fell.bestand}</strong></div>
+              <div>
+                <button class="minus">-1</button>
+                <button class="plus">+1</button>
+              </div>
+            </div>`;
+          card.querySelector(".minus").onclick = () => updateBestand(fell.id, -1);
+          card.querySelector(".plus").onclick  = () => updateBestand(fell.id, +1);
+          container.append(card);
+        });
+      } catch (err) {
+        console.error("Fehler beim Laden:", err);
         container.innerHTML = "<p style='color:red'>Fehler beim Laden der Daten.</p>";
-        return;
       }
-      container.innerHTML = "";
-      data.forEach(fell => {
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-          <div class="title">${fell.hersteller} – ${fell.serie} ${fell.groesse}</div>
-          <div class="wiki">${fell.wiki}</div>
-          <div class="controls">
-            <div>Bestand: <strong>${fell.bestand}</strong></div>
-            <div>
-              <button class="minus">-1</button>
-              <button class="plus">+1</button>
-            </div>
-          </div>`;
-        // Button-Handler
-        card.querySelector(".minus").onclick = () => updateBestand(fell.id, -1);
-        card.querySelector(".plus").onclick  = () => updateBestand(fell.id, +1);
-        container.append(card);
-      });
     }
 
-    // 3) Bestand aktualisieren
+    // 4) Bestand aktualisieren und neu laden
     async function updateBestand(id, delta) {
-      const { error } = await supabase
-        .from("felle")
-        .update({ bestand: supabase.raw("bestand + ?", [delta]) })
-        .eq("id", id);
-      if (error) console.error("Update-Fehler:", error);
-      loadFelle();
+      try {
+        const { error } = await client
+          .from("felle")
+          .update({ bestand: client.raw("bestand + ?", [delta]) })
+          .eq("id", id);
+        if (error) throw error;
+        loadFelle();
+      } catch (err) {
+        console.error("Update-Fehler:", err);
+      }
     }
 
-    // Initial laden
+    // 5) Initialer Aufruf
     loadFelle();
   </script>
 </body>

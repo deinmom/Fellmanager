@@ -15,7 +15,7 @@
     .minus { background: #e53e3e; }
     .plus  { background: #38a169; }
   </style>
-  <!-- Supabase-JS via CDN -->
+  <!-- 1) Supabase-JS via CDN einbinden -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -24,16 +24,19 @@
   <div id="container"></div>
 
   <script>
-    // 1) Deine Supabase-Zugangsdaten:
+    // 2) Deine Supabase-Daten:
     const SUPABASE_URL     = "https://owrfgjypnemsxonmbrpj.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93cmZnanlwbmVtc3hvbmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczMTUyOTgsImV4cCI6MjA2Mjg5MTI5OH0.X1PymyDZqNe_Plmao8U6gdqFKP70VrFtuZTesgyZMwg";
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 3) Erstelle den Client in einer neuen Variable, 
+    //    damit wir nicht den globalen Namen "supabase" überschreiben:
+    const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const container = document.getElementById("container");
 
-    // 2) Liste laden und anzeigen
+    // 4) Daten laden und anzeigen
     async function loadFelle() {
-      const { data, error } = await supabase
+      const { data, error } = await supa
         .from("felle")
         .select("*")
         .order("serie", { ascending: true });
@@ -56,24 +59,23 @@
               <button class="plus">+1</button>
             </div>
           </div>`;
-        // Button-Handler
         card.querySelector(".minus").onclick = () => updateBestand(fell.id, -1);
         card.querySelector(".plus").onclick  = () => updateBestand(fell.id, +1);
         container.append(card);
       });
     }
 
-    // 3) Bestand aktualisieren
+    // 5) Bestand aktualisieren
     async function updateBestand(id, delta) {
-      const { error } = await supabase
+      const { error } = await supa
         .from("felle")
-        .update({ bestand: supabase.raw("bestand + ?", [delta]) })
+        .update({ bestand: supa.raw("bestand + ?", [delta]) })
         .eq("id", id);
       if (error) console.error("Update-Fehler:", error);
       loadFelle();
     }
 
-    // Initial laden
+    // 6) Starte initial
     loadFelle();
   </script>
 </body>

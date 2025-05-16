@@ -11,44 +11,62 @@
     .title { font-size: 18px; font-weight: bold; }
     .wiki  { font-size: 14px; color: #555; margin: .5rem 0; }
     .controls { display: flex; justify-content: space-between; align-items: center; }
-    .controls button { border: none; color: white; padding: .3rem .7rem; border-radius: 5px; cursor: pointer; }
+    .controls button { border: none; color: white; padding: .3rem .7rem; border-radius: .25rem; cursor: pointer; }
     .minus { background: #e53e3e; }
     .plus  { background: #38a169; }
   </style>
-  <!-- Supabase-JS via CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-
   <div class="header">Fellmanager</div>
-  <div id="container"></div>
+  <div id="container">Lade Daten…</div>
 
   <script>
-    // 1) Deine Supabase-Zugangsdaten:
-    const SUPABASE_URL     = "https://owrfgjypnemsxonmbrpj.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93cmZnanlwbmVtc3hvbmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczMTUyOTgsImV4cCI6MjA2Mjg5MTI5OH0.X1PymyDZqNe_Plmao8U6gdqFKP70VrFtuZTesgyZMwg";
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  document.addEventListener('DOMContentLoaded', async () => {
+    // 1) Supabase-URL & Anon-Key eintragen
+    const URL = 'https://owrfgjypnemsxonmbrpj.supabase.co';
+    const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93cmZnanlwbmVtc3hvbm1icnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczMTUyOTgsImV4cCI6MjA2Mjg5MTI5OH0.X1PymyDZqNe_Plmao8U6gdqFKP70VrFtuZTesgyZMwg';  // ca. 340–360 Zeichen
 
-    const container = document.getElementById("container");
+    const headers = {
+      'apikey': KEY,
+      'Authorization': 'Bearer ' + KEY,
+      'Content-Type': 'application/json'
+    };
 
-    // 2) Liste laden und anzeigen
+    // 2) Globale Einstellungen
+    let warnschwelle = 5, tolerance = 1, emailTo = 'niklas.sakowski1996@gmail.com';
+
+    // 3) Einstellungen laden
+    async function loadSettings() {
+      const res = await fetch(`${URL}/rest/v1/settings?select=warnschwelle,tolerance,email_to&id=eq.global`, { headers });
+      if (!res.ok) throw new Error('Settings-Load ' + res.status);
+      const [set] = await res.json();
+      warnschwelle = set.warnschwelle;
+      tolerance     = set.tolerance;
+      emailTo       = set.email_to;
+      console.log('⚙️ Einstellungen:', { warnschwelle, tolerance, emailTo });
+    }
+
+    // 4) Felle laden & rendern
     async function loadFelle() {
-      const { data, error } = await supabase
-        .from("felle")
-        .select("*")
-        .order("serie", { ascending: true });
-      if (error) {
-        console.error(error);
-        container.innerHTML = "<p style='color:red'>Fehler beim Laden der Daten.</p>";
+      const container = document.getElementById('container');
+      container.textContent = 'Lade Daten…';
+      const res = await fetch(`${URL}/rest/v1/felle?select=*&order=serie.asc`, { headers });
+      if (!res.ok) {
+        container.innerHTML = `<p style="color:red">Fehler beim Laden: ${res.status}</p>`;
         return;
       }
-      container.innerHTML = "";
+      const data = await res.json();
+      if (data.length === 0) {
+        container.innerHTML = '<p>Keine Einträge gefunden.</p>';
+        return;
+      }
+      container.innerHTML = '';
       data.forEach(fell => {
-        const card = document.createElement("div");
-        card.className = "card";
+        const card = document.createElement('div');
+        card.className = 'card';
         card.innerHTML = `
           <div class="title">${fell.hersteller} – ${fell.serie} ${fell.groesse}</div>
-          <div class="wiki">${fell.wiki}</div>
+          <div class="wiki">${fell.wiki||''}</div>
           <div class="controls">
             <div>Bestand: <strong>${fell.bestand}</strong></div>
             <div>
@@ -56,25 +74,77 @@
               <button class="plus">+1</button>
             </div>
           </div>`;
-        // Button-Handler
-        card.querySelector(".minus").onclick = () => updateBestand(fell.id, -1);
-        card.querySelector(".plus").onclick  = () => updateBestand(fell.id, +1);
-        container.append(card);
+        card.querySelector('.minus').onclick = () => changeBestand(fell.id, -1);
+        card.querySelector('.plus').onclick  = () => changeBestand(fell.id, +1);
+        container.appendChild(card);
       });
     }
 
-    // 3) Bestand aktualisieren
-    async function updateBestand(id, delta) {
-      const { error } = await supabase
-        .from("felle")
-        .update({ bestand: supabase.raw("bestand + ?", [delta]) })
-        .eq("id", id);
-      if (error) console.error("Update-Fehler:", error);
-      loadFelle();
+    // 5) Bestand ändern, Schwellen-Check & Mail
+    async function changeBestand(id, delta) {
+      try {
+        // a) aktuellen Bestand holen
+        let getRes = await fetch(`${URL}/rest/v1/felle?select=bestand&id=eq.${encodeURIComponent(id)}`, { headers });
+        if (!getRes.ok) throw new Error('GET Bestand ' + getRes.status);
+        let [{ bestand }] = await getRes.json();
+        const neu = bestand + delta;
+
+        // b) Bestand patchen
+        let patchRes = await fetch(`${URL}/rest/v1/felle?id=eq.${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ bestand: neu })
+        });
+        if (!patchRes.ok) throw new Error('PATCH ' + patchRes.status);
+
+        // c) Schwellen-Check
+        if (neu <= warnschwelle + tolerance) {
+          await sendAlert(id, neu);
+        }
+
+        // d) UI neu laden
+        loadFelle();
+      } catch (err) {
+        console.error('Update-Fehler:', err);
+        alert('Update-Fehler: ' + err.message);
+      }
     }
 
-    // Initial laden
-    loadFelle();
+    // 6) sendAlert via Formspree
+    async function sendAlert(id, neu) {
+      try {
+        const body = {
+          _subject: `Warnung: ${id} nur noch ${neu}`,
+          message: `Der Bestand des Fells ${id} ist auf ${neu} gefallen (Schwelle ${warnschwelle}).`,
+          _replyto: emailTo
+        };
+        const res = await fetch("https://formspree.io/f/xeogngrz", {
+          method: "POST",
+          headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || res.status);
+        }
+        console.log("📧 Alert gesendet via Formspree");
+      } catch (err) {
+        console.error("❌ Fehler sendAlert():", err);
+      }
+    }
+
+    // 7) Initialisieren
+    try {
+      await loadSettings();
+      await loadFelle();
+    } catch (err) {
+      console.error('Init-Fehler:', err);
+      document.getElementById('container').innerHTML = `<p style="color:red">Init-Error: ${err.message}</p>`;
+    }
+  });
   </script>
 </body>
 </html>

@@ -1,115 +1,117 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <title>Fellmanager</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <style>
-    body { max-width:700px; margin:2rem auto; font-family:sans-serif; }
-    .header { font-size:24px; font-weight:bold; text-align:center; margin:1rem 0; }
-    .btn { padding:.5rem 1rem; margin:0 .5rem .5rem 0; cursor:pointer; border:none; border-radius:.25rem; }
+    body { margin:0; font-family:sans-serif; background:#f5f5f5; }
+    header { background:#3182ce; color:white; padding:1rem; text-align:center; font-size:1.5rem; position:sticky; top:0; }
+    #toolbar { padding:1rem; display:flex; flex-wrap:wrap; gap:.5rem; background:#fff; }
+    .btn { padding:.5rem 1rem; border:none; border-radius:.25rem; cursor:pointer; }
     .btn-admin { background:#3182ce; color:white; }
     .btn-logout { background:#e53e3e; color:white; }
     .btn-import { background:#d69e2e; color:white; }
     .btn-export { background:#2f855a; color:white; }
-    #settingsPanel { border:1px solid #888; padding:1rem; margin-bottom:2rem; border-radius:.5rem; display:none; }
-    #settingsPanel label { display:block; margin:.5rem 0 .2rem; }
-    #settingsPanel input { width:4rem; padding:.2rem; }
-    #settingsPanel button { margin-top:1rem; padding:.4rem .8rem; }
-    .card { border:1px solid #ccc; border-radius:1rem; padding:1rem; margin-bottom:1rem; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-    .title { font-size:18px; font-weight:bold; }
-    .wiki  { font-size:14px; color:#555; margin:.5rem 0; }
-    .controls { display:flex; flex-wrap: wrap; justify-content:space-between; align-items:center; }
-    .controls > div { margin: .3rem; }
-    .controls button, .controls input { margin-right:.5rem; }
-    .minus { background:#e53e3e; color:white; }
-    .plus  { background:#38a169; color:white; }
-    .tol-input, .stock-input { width:4rem; }
-    #fileInput { display:none; }
+    .btn-filter { background:#4a5568; color:white; }
+    .btn-history { background:#805ad5; color:white; }
+    #settingsPanel,#filterPanel,#historyPanel { background:#fff; margin:1rem; padding:1rem; border-radius:.5rem; display:none; }
+    #menu,#submenu,#cards { padding:1rem; }
+    .section { margin:1rem 0 .5rem; font-weight:bold; }
+    .card { background:#fff; border-radius:1rem; padding:1rem; margin:.5rem 1rem; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+    .title { font-weight:bold; }
+    .wiki { font-size:.9rem; color:#555; margin:.5rem 0; }
+    .controls { display:flex; justify-content:space-between; align-items:center; margin-top:.5rem; }
+    .controls button { border:none; padding:.3rem .7rem; border-radius:.25rem; color:white; cursor:pointer; }
+    .minus { background:#e53e3e; }
+    .plus  { background:#38a169; }
+    input.stock-input,input.tol-input { width:4rem; margin-right:.5rem; }
   </style>
 </head>
 <body>
-  <div class="header">Fellmanager</div>
-  <div>
-    <button id="btnAdmin" class="btn btn-admin">Admin Modus</button>
-    <button id="btnLogout" class="btn btn-logout" style="display:none;">Logout Admin</button>
-    <button id="btnImport" class="btn btn-import" style="display:none;">CSV importieren</button>
-    <button id="btnExport" class="btn btn-export">CSV exportieren</button>
-    <input type="file" id="fileInput" accept=".csv" />
+  <header>Fellmanager</header>
+  <div id="toolbar">
+    <button id="btnAdmin"   class="btn btn-admin">Admin Modus</button>
+    <button id="btnLogout"  class="btn btn-logout" style="display:none;">Logout Admin</button>
+    <button id="btnImport"  class="btn btn-import"  style="display:none;">CSV importieren</button>
+    <button id="btnExport"  class="btn btn-export">CSV exportieren</button>
+    <button id="btnFilter"  class="btn btn-filter">Filter</button>
+    <button id="btnHistory" class="btn btn-history">Historie</button>
+    <input  type="file"    id="fileInput" accept=".csv"/>
   </div>
 
   <div id="settingsPanel">
     <h2>Einstellungen</h2>
-    <label>Warnschwelle:
-      <input type="number" id="warnschwelle" />
-    </label>
-    <label>Globale Toleranz:
-      <input type="number" id="tolerance" />
-    </label>
-    <label>Warn-Mail an:
-      <input type="email" id="emailTo" style="width:200px" />
-    </label>
-    <button id="saveSettings">Speichern</button>
-    <span id="saveStatus" style="margin-left:1rem;"></span>
+    <label>Warnschwelle: <input type="number" id="warnschwelle"/></label><br/>
+    <label>Globale Toleranz: <input type="number" id="tolerance"/></label><br/>
+    <label>Warn-Mail an: <input type="email" id="emailTo" style="width:200px"/></label><br/>
+    <button id="saveSettings" class="btn">Speichern</button>
+    <span id="saveStatus"></span>
   </div>
 
-  <div id="container">Lade Daten…</div>
+  <div id="filterPanel">
+    <h2>Filter</h2>
+    <div class="section">Typ</div><div id="filterTyp"></div>
+    <div class="section">Hersteller</div><div id="filterHersteller"></div>
+    <div class="section">Serie</div><div id="filterSerie"></div>
+    <button id="btnClearFilters" class="btn">Filter zurücksetzen</button>
+  </div>
+
+  <div id="historyPanel">
+    <h2>Historie</h2>
+    <select id="historySelect"><option value="">– Fell wählen –</option></select>
+    <div id="historyList">Keine Historie.</div>
+  </div>
+
+  <div id="menu"></div>
+  <div id="submenu" style="display:none;"></div>
+  <div id="cards" style="display:none;"></div>
 
   <script>
   document.addEventListener('DOMContentLoaded', async () => {
     const URL        = 'https://owrfgjypnemsxonmbrpj.supabase.co';
     const KEY        = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93cmZnanlwbmVtc3hvbm1icnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczMTUyOTgsImV4cCI6MjA2Mjg5MTI5OH0.X1PymyDZqNe_Plmao8U6gdqFKP70VrFtuZTesgyZMwg';
-    const FORM_ID    = 'xeogngrz';
     const ADMIN_PASS = 'Admin';
+    const headers    = { apikey:KEY, Authorization:'Bearer ' + KEY };
 
-    const headers = {
-      apikey:        KEY,
-      Authorization: 'Bearer ' + KEY,
-      'Content-Type':'application/json'
-    };
+    // UI-Refs
+    const btnAdmin       = document.getElementById('btnAdmin'),
+          btnLogout      = document.getElementById('btnLogout'),
+          btnImport      = document.getElementById('btnImport'),
+          btnExport      = document.getElementById('btnExport'),
+          btnFilter      = document.getElementById('btnFilter'),
+          btnHistory     = document.getElementById('btnHistory'),
+          fileInput      = document.getElementById('fileInput'),
+          settingsPanel  = document.getElementById('settingsPanel'),
+          filterPanel    = document.getElementById('filterPanel'),
+          historyPanel   = document.getElementById('historyPanel'),
+          inpWarn        = document.getElementById('warnschwelle'),
+          inpTol         = document.getElementById('tolerance'),
+          inpMail        = document.getElementById('emailTo'),
+          btnSave        = document.getElementById('saveSettings'),
+          spanStat       = document.getElementById('saveStatus'),
+          filterTyp      = document.getElementById('filterTyp'),
+          filterHersteller = document.getElementById('filterHersteller'),
+          filterSerie    = document.getElementById('filterSerie'),
+          btnClear       = document.getElementById('btnClearFilters'),
+          historySelect  = document.getElementById('historySelect'),
+          historyList    = document.getElementById('historyList'),
+          menu           = document.getElementById('menu'),
+          submenu        = document.getElementById('submenu'),
+          cards          = document.getElementById('cards');
 
-    // UI-Elemente
-    const btnAdmin    = document.getElementById('btnAdmin');
-    const btnLogout   = document.getElementById('btnLogout');
-    const btnImport   = document.getElementById('btnImport');
-    const btnExport   = document.getElementById('btnExport');
-    const fileInput   = document.getElementById('fileInput');
-    const settingsDiv = document.getElementById('settingsPanel');
-    const inpWarn     = document.getElementById('warnschwelle');
-    const inpTol      = document.getElementById('tolerance');
-    const inpMail     = document.getElementById('emailTo');
-    const btnSave     = document.getElementById('saveSettings');
-    const spanStat    = document.getElementById('saveStatus');
-    const container   = document.getElementById('container');
+    let adminMode = false,
+        warnschwelle = 0,
+        tolerance = 0,
+        emailTo = '',
+        allData = [],
+        filters = { typ:null, hersteller:null, serie:null },
+        currentManufacturer = null,
+        currentFilterField  = null;
 
-    let adminMode = false;
-    let warnschwelle = 0, tolerance = 0, emailTo = '';
-
-    // Admin-Login
-    btnAdmin.onclick = () => {
-      const pw = prompt('Admin-Passwort eingeben:');
-      if (pw === ADMIN_PASS) {
-        adminMode = true;
-        settingsDiv.style.display = 'block';
-        btnAdmin.style.display    = 'none';
-        btnLogout.style.display   = 'inline-block';
-        btnImport.style.display   = 'inline-block';
-        loadSettings();
-        loadFelle();
-      } else alert('Falsches Passwort');
-    };
-    btnLogout.onclick = () => {
-      adminMode = false;
-      settingsDiv.style.display = 'none';
-      btnLogout.style.display   = 'none';
-      btnAdmin.style.display    = 'inline-block';
-      btnImport.style.display   = 'none';
-      loadFelle();
-    };
-
-    // Einstellungen laden/speichern
+    // Fetch initial data & settings
     async function loadSettings() {
-      const res = await fetch(`${URL}/rest/v1/settings?select=warnschwelle,tolerance,email_to&id=eq.global`,{headers});
+      const res = await fetch(`${URL}/rest/v1/settings?select=warnschwelle,tolerance,email_to&id=eq.global`, { headers });
       const [s] = await res.json();
       warnschwelle = s.warnschwelle;
       tolerance     = s.tolerance;
@@ -119,167 +121,218 @@
       inpMail.value = emailTo;
     }
     btnSave.onclick = async () => {
-      spanStat.textContent = 'Speichern…';
-      try {
-        const body = {
-          warnschwelle: parseInt(inpWarn.value,10),
-          tolerance:    parseInt(inpTol.value,10),
-          email_to:     inpMail.value
-        };
-        const res = await fetch(`${URL}/rest/v1/settings?id=eq.global`,{method:'PATCH',headers,body:JSON.stringify(body)});
-        if (!res.ok) throw new Error(res.status);
-        warnschwelle = body.warnschwelle;
-        tolerance     = body.tolerance;
-        emailTo       = body.email_to;
-        spanStat.textContent = '✔️';
-        setTimeout(()=>spanStat.textContent='',1500);
-      } catch(e) {
-        console.error(e); spanStat.textContent = '❌';
-      }
+      spanStat.textContent = '…';
+      const body = { warnschwelle:parseInt(inpWarn.value), tolerance:parseInt(inpTol.value), email_to:inpMail.value };
+      const r = await fetch(`${URL}/rest/v1/settings?id=eq.global`, {
+        method:'PATCH', headers:{ ...headers, 'Content-Type':'application/json' }, body:JSON.stringify(body)
+      });
+      spanStat.textContent = r.ok ? '✔️' : '❌';
     };
 
-    // Felle laden & rendern
-    async function loadFelle() {
-      container.textContent = 'Lade Daten…';
-      const res = await fetch(`${URL}/rest/v1/felle?select=*,tolerance_per_item,skip_email&order=serie.asc`,{headers});
-      const data = await res.json();
-      container.innerHTML = data.length ? '' : '<p>Keine Einträge gefunden.</p>';
-      data.forEach(f => {
-        const card = document.createElement('div'); card.className='card';
-        // Titel & Wiki
-        const title = document.createElement('div'); title.className='title';
-        title.textContent = `${f.hersteller} – ${f.serie} ${f.groesse}`; card.appendChild(title);
-        const wiki = document.createElement('div'); wiki.className='wiki';
-        wiki.textContent = f.wiki||''; card.appendChild(wiki);
-        // Controls
-        const ctr = document.createElement('div'); ctr.className='controls';
-        // Bestand inline edit (Admin) or display
-        if (adminMode) {
-          const stockIn = document.createElement('input');
-          stockIn.type  = 'number';
-          stockIn.value = f.bestand;
-          stockIn.className = 'stock-input';
-          stockIn.onchange = () => updateItem({ id: f.id, bestand: parseInt(stockIn.value,10) });
-          ctr.appendChild(stockIn);
-        } else {
-          const bd = document.createElement('div');
-          bd.innerHTML = `Bestand: <strong>${f.bestand}</strong>`; ctr.appendChild(bd);
-        }
-        // +/- Buttons
-        const btns = document.createElement('div');
-        ['minus','plus'].forEach(mode => {
-          const b = document.createElement('button');
-          b.className = mode;
-          b.textContent = mode==='minus'?'-1':'+1';
-          b.onclick = () => changeBestand(f.id, mode==='minus'?-1:1);
-          btns.appendChild(b);
-        });
-        ctr.appendChild(btns);
-        // Toleranz pro Fell (Admin)
-        if (adminMode) {
-          const tolIn = document.createElement('input');
-          tolIn.type        = 'number';
-          tolIn.value       = f.tolerance_per_item!=null?f.tolerance_per_item:'';
-          tolIn.placeholder = 'tol';
-          tolIn.className   = 'tol-input';
-          tolIn.onchange    = () => updateItem({ id: f.id, tolerance_per_item: tolIn.value===''?null:parseInt(tolIn.value,10) });
-          ctr.appendChild(tolIn);
-        }
-        card.appendChild(ctr);
-        container.appendChild(card);
-      });
+    async function loadData() {
+      const res = await fetch(`${URL}/rest/v1/felle?select=*,typ_a,typ_b&order=hersteller,serie,groesse`, { headers });
+      allData = await res.json();
     }
+    await loadSettings();
+    await loadData();
 
-    // Bestand oder Per-Item-Tolerance patchen
-    async function updateItem(changes) {
-      await fetch(`${URL}/rest/v1/felle?id=eq.${encodeURIComponent(changes.id)}`, {
-        method:'PATCH', headers, body:JSON.stringify(changes)
-      });
-    }
-
-    // changeBestand mit Warn-Mail
-    async function changeBestand(id, delta) {
-      const r1 = await fetch(`${URL}/rest/v1/felle?select=bestand,tolerance_per_item,skip_email&id=eq.${encodeURIComponent(id)}`,{headers});
-      const [{bestand,tolerance_per_item,skip_email}] = await r1.json();
-      const neu = bestand+delta;
-      await updateItem({ id, bestand: neu });
-      if (!skip_email) {
-        const tol = tolerance_per_item!=null?tolerance_per_item:tolerance;
-        if (neu <= warnschwelle+tol) await sendAlertWithList();
+    // Admin Login/Logout
+    btnAdmin.onclick = () => {
+      const pw = prompt('Admin-Passwort:');
+      if (pw === ADMIN_PASS) {
+        adminMode = true;
+        settingsPanel.style.display = 'block';
+        btnAdmin.style.display      = 'none';
+        btnLogout.style.display     = '';
+        btnImport.style.display     = '';
       }
-      await loadFelle();
-    }
-
-    // CSV-Import
-    btnImport.onclick = () => fileInput.click();
-    fileInput.onchange = () => {
-      const file = fileInput.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async e => {
-        const lines = e.target.result.split(/\r?\n/).filter(l=>l.trim());
-        const [header, ...rows] = lines.map(l=>l.split(','));
-        for (const cols of rows) {
-          const obj = {};
-          header.forEach((h,i)=>obj[h] = cols[i]);
-          const id = obj.id;
-          delete obj.id;
-          // convert numeric fields
-          if (obj.bestand != null) obj.bestand = parseInt(obj.bestand,10);
-          if (obj.tolerance_per_item != null) obj.tolerance_per_item = obj.tolerance_per_item===''?null:parseInt(obj.tolerance_per_item,10);
-          if (obj.skip_email != null) obj.skip_email = obj.skip_email==='true';
-          await updateItem({ id, ...obj });
-        }
-        loadFelle();
-        alert('Import abgeschlossen');
-      };
-      reader.readAsText(file);
+    };
+    btnLogout.onclick = () => {
+      adminMode = false;
+      settingsPanel.style.display = 'none';
+      filterPanel.style.display   = 'none';
+      historyPanel.style.display  = 'none';
+      submenu.style.display        = 'none';
+      menu.style.display           = '';
+      cards.style.display          = 'none';
+      btnLogout.style.display      = 'none';
+      btnAdmin.style.display       = '';
+      btnImport.style.display      = 'none';
     };
 
-    // CSV-Export im Original-Format
-    btnExport.onclick = async () => {
-      const res = await fetch(`${URL}/rest/v1/felle`, { headers });
-      const data = await res.json();
-      const header = Object.keys(data[0]||{}).join(',');
-      let csv = header + '\n';
-      data.forEach(f => {
-        csv += header.split(',').map(h => {
-          let v = f[h];
-          return v==null?'':String(v).replace(/"/g,'""');
-        }).join(',') + '\n';
+    // CSV Import
+    fileInput.onchange = async () => {
+      const text = await fileInput.files[0].text();
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      const sep = lines[0].includes(';') ? ';' : ',';
+      const [hdr, ...rows] = lines.map(l => l.split(sep).map(c => c.trim()));
+      const idIdx = hdr.indexOf('id'), stIdx = hdr.indexOf('bestand');
+      for (const cols of rows) {
+        const id = cols[idIdx], st = parseInt(cols[stIdx],10);
+        if (id && !isNaN(st)) {
+          const old = allData.find(f => f.id===id).bestand;
+          await updateAndLog(id, st - old);
+        }
+      }
+      alert('Import abgeschlossen');
+    };
+
+    // CSV Export
+    btnExport.onclick = () => {
+      const sep = ';', keys = Object.keys(allData[0]);
+      let csv = keys.join(sep) + '\n';
+      allData.forEach(f => {
+        csv += keys.map(k => f[k]==null?'':String(f[k]).replace(/"/g,'""')).join(sep) + '\n';
       });
-      const blob = new Blob([csv], { type:'text/csv' });
+      const blob = new Blob([csv],{type:'text/csv'});
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
-      a.href = url; a.download = 'COPY4DATABASE.csv';
-      a.click(); URL.revokeObjectURL(url);
+      a.href = url; a.download = 'COPY4DATABASE.csv'; document.body.append(a);
+      a.click(); a.remove(); URL.revokeObjectURL(url);
     };
 
-    // Warn-Mail mit individuellem Tol
-    async function sendAlertWithList() {
-      const thr = warnschwelle + tolerance;
-      const res = await fetch(`${URL}/rest/v1/felle?select=hersteller,serie,groesse,bestand,tolerance_per_item,skip_email`,{headers});
-      const all = await res.json();
-      let msg = `Felle unter ihren Schwellen:\n\n`, count=0;
-      all.forEach(f => {
-        if (f.skip_email) return;
-        const tol = f.tolerance_per_item!=null?f.tolerance_per_item:tolerance;
-        if (f.bestand <= warnschwelle+tol) {
-          msg += `• ${f.hersteller} – ${f.serie} ${f.groesse}: ${f.bestand} (tol=${tol})\n`;
-          count++;
-        }
+    // Filter panel
+    btnFilter.onclick = () => {
+      filterPanel.style.display = filterPanel.style.display==='block' ? 'none' : 'block';
+      buildFilterButtons();
+    };
+    btnClear.onclick = () => {
+      filters = { typ:null, hersteller:null, serie:null };
+      buildFilterButtons();
+      renderMenu();
+    };
+    function buildFilterButtons() {
+      const sets = [
+        [ 'typ', Array.from(new Set(allData.flatMap(f=>[f.typ_a,f.typ_b].filter(Boolean)))) ],
+        [ 'hersteller', Array.from(new Set(allData.map(f=>f.hersteller))) ],
+        [ 'serie', Array.from(new Set(allData.map(f=>f.serie))) ]
+      ];
+      sets.forEach(([key, arr]) => {
+        const container = { typ:filterTyp, hersteller:filterHersteller, serie:filterSerie }[key];
+        container.innerHTML = '';
+        arr.sort().forEach(val => {
+          if (!filters.hersteller || key==='hersteller' || allData.some(f=>f.hersteller===filters.hersteller && (key!=='hersteller'))) {
+            const b = document.createElement('button');
+            b.textContent = val; b.className = 'btn';
+            if (filters[key]===val) b.classList.add('btn-admin');
+            b.onclick = () => {
+              filters[key] = filters[key]===val ? null : val;
+              buildFilterButtons();
+              renderMenu();
+            };
+            container.appendChild(b);
+          }
+        });
       });
-      await fetch(`https://formspree.io/f/${FORM_ID}`,{
-        method:'POST',
-        headers:{Accept:'application/json','Content-Type':'application/json'},
-        body:JSON.stringify({_subject:`Warnung: ${count} Felle niedrig`,message:msg,_replyto:emailTo})
-      });
-      console.log('📧 Warn-Mail gesendet');
     }
 
-    // Initialisierung
-    await loadSettings();
-    await loadFelle();
+    // History panel
+    btnHistory.onclick = () => {
+      historyPanel.style.display = 'block';
+      historySelect.innerHTML = '<option></option>';
+      allData.forEach(f => historySelect.add(new Option(`${f.hersteller}–${f.serie} ${f.groesse}`, f.id)));
+    };
+    historySelect.onchange = async () => {
+      const id = historySelect.value;
+      if (!id) return historyList.textContent = 'Keine Historie.';
+      const res = await fetch(`${URL}/rest/v1/history?select=delta,timestamp&fell_id=eq.${encodeURIComponent(id)}&order=timestamp.desc`, { headers });
+      const hs = await res.json();
+      historyList.innerHTML = hs.map(h => `<div>${new Date(h.timestamp).toLocaleString()}: ${h.delta>0?'+':''}${h.delta}</div>`).join('') || 'Keine Einträge.';
+    };
+
+    // Menu / Submenu / Cards
+    function renderMenu() {
+      menu.innerHTML = '<h2>Wähle Hersteller</h2>';
+      submenu.style.display = 'none';
+      cards.style.display   = 'none';
+      Object.keys(filters).forEach(k => filters[k]||(filters[k]=null));
+      buildFilterButtons();
+      const makers = Array.from(new Set(allData.map(f=>f.hersteller))).filter(h=>!filters.hersteller||h===filters.hersteller).sort();
+      makers.forEach(m => {
+        const b = document.createElement('button');
+        b.textContent = m; b.className = 'btn';
+        b.onclick = () => showSubmenu(m);
+        menu.appendChild(b);
+      });
+    }
+    function showSubmenu(man) {
+      currentManufacturer = man;
+      menu.style.display    = 'none';
+      submenu.style.display = '';
+      cards.style.display   = 'none';
+      submenu.innerHTML = '<button class="btn btn-logout">← Zurück</button><br/>' +
+        '<button class="btn" id="btnBySerie">Nach Serie</button>' +
+        '<button class="btn" id="btnByTyp" style="margin-left:.5rem">Nach Typ</button>';
+      document.getElementById('btnBySerie').onclick = () => showList('serie');
+      document.getElementById('btnByTyp').onclick   = () => showList('typ');
+      submenu.querySelector('.btn-logout').onclick  = renderMenu;
+    }
+    function showList(field) {
+      currentFilterField = field;
+      submenu.style.display = 'none';
+      cards.style.display   = '';
+      cards.innerHTML       = '<button class="btn btn-logout">← Zurück</button><br/>';
+      cards.querySelector('.btn-logout').onclick = () => showSubmenu(currentManufacturer);
+      const vals = Array.from(new Set(
+        allData.filter(f=>f.hersteller===currentManufacturer)
+               .flatMap(f => field==='serie' ? [f.serie] : [f.typ_a,f.typ_b].filter(Boolean))
+      )).sort();
+      vals.forEach(v => {
+        const b = document.createElement('button');
+        b.textContent = v; b.className='btn';
+        b.onclick = () => renderCards(field, v);
+        cards.appendChild(b);
+      });
+    }
+    function renderCards(field, val) {
+      cards.style.paddingTop = '0';
+      cards.innerHTML = '<button class="btn btn-logout">← Zurück</button>';
+      cards.querySelector('.btn-logout').onclick = () => showList(field);
+      allData.filter(f=>{
+        if (f.hersteller!==currentManufacturer) return false;
+        return field==='serie'
+          ? f.serie===val
+          : [f.typ_a,f.typ_b].includes(val);
+      }).forEach(f => {
+        const c = document.createElement('div'); c.className='card';
+        c.innerHTML = `
+          <div class="title">${f.serie} ${f.groesse}</div>
+          <div class="wiki">${f.wiki||''}</div>
+          <div class="controls">
+            ${ adminMode
+                ? `<input class="stock-input" type="number" value="${f.bestand}" onchange="window.updateAndLog('${f.id}', parseInt(this.value,10)-${f.bestand})">`
+                : `<div>Bestand: <strong>${f.bestand}</strong></div>`
+            }
+            <button class="minus" onclick="window.updateAndLog('${f.id}', -1)">-1</button>
+            <button class="plus"  onclick="window.updateAndLog('${f.id}', +1)">+1</button>
+          </div>`;
+        cards.appendChild(c);
+      });
+    }
+
+    // Update + History
+    window.updateAndLog = async (id, delta) => {
+      if (!delta) return;
+      const f = allData.find(x=>x.id===id);
+      const neu = f.bestand + delta;
+      await fetch(`${URL}/rest/v1/felle?id=eq.${encodeURIComponent(id)}`, {
+        method:'PATCH',
+        headers: { ...headers, 'Content-Type':'application/json' },
+        body: JSON.stringify({ bestand: neu })
+      });
+      await fetch(`${URL}/rest/v1/history`, {
+        method:'POST',
+        headers: { ...headers, 'Content-Type':'application/json' },
+        body: JSON.stringify({ fell_id: id, delta })
+      });
+      f.bestand = neu;
+      renderCards(currentFilterField, 
+        document.querySelector('#cards > .btn:not(.btn-logout)').textContent
+      );
+    };
+
+    // Initial render
+    renderMenu();
   });
   </script>
 </body>

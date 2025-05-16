@@ -20,7 +20,7 @@
     .title { font-size:18px; font-weight:bold; }
     .wiki  { font-size:14px; color:#555; margin:.5rem 0; }
     .controls { display:flex; flex-wrap: wrap; justify-content:space-between; align-items:center; }
-    .controls > div { margin: .3rem; }
+    .controls > div { margin:.3rem; }
     .controls button, .controls input { margin-right:.5rem; }
     .minus { background:#e53e3e; color:white; }
     .plus  { background:#38a169; color:white; }
@@ -68,24 +68,21 @@
       'Content-Type':'application/json'
     };
 
-    // UI-Elemente
-    const btnAdmin    = document.getElementById('btnAdmin');
-    const btnLogout   = document.getElementById('btnLogout');
-    const btnImport   = document.getElementById('btnImport');
-    const btnExport   = document.getElementById('btnExport');
-    const fileInput   = document.getElementById('fileInput');
-    const settingsDiv = document.getElementById('settingsPanel');
-    const inpWarn     = document.getElementById('warnschwelle');
-    const inpTol      = document.getElementById('tolerance');
-    const inpMail     = document.getElementById('emailTo');
-    const btnSave     = document.getElementById('saveSettings');
-    const spanStat    = document.getElementById('saveStatus');
-    const container   = document.getElementById('container');
+    const btnAdmin  = document.getElementById('btnAdmin'),
+          btnLogout = document.getElementById('btnLogout'),
+          btnImport = document.getElementById('btnImport'),
+          btnExport = document.getElementById('btnExport'),
+          fileInput = document.getElementById('fileInput'),
+          settingsDiv = document.getElementById('settingsPanel'),
+          inpWarn = document.getElementById('warnschwelle'),
+          inpTol = document.getElementById('tolerance'),
+          inpMail = document.getElementById('emailTo'),
+          btnSave = document.getElementById('saveSettings'),
+          spanStat = document.getElementById('saveStatus'),
+          container = document.getElementById('container');
 
-    let adminMode = false;
-    let warnschwelle = 0, tolerance = 0, emailTo = '';
+    let adminMode = false, warnschwelle = 0, tolerance = 0, emailTo = '';
 
-    // Admin-Login
     btnAdmin.onclick = () => {
       const pw = prompt('Admin-Passwort eingeben:');
       if (pw === ADMIN_PASS) {
@@ -96,7 +93,7 @@
         btnImport.style.display   = 'inline-block';
         loadSettings();
         loadFelle();
-      } else alert('Falsches Passwort');
+      }
     };
     btnLogout.onclick = () => {
       adminMode = false;
@@ -107,16 +104,11 @@
       loadFelle();
     };
 
-    // Einstellungen laden/speichern
     async function loadSettings() {
       const res = await fetch(`${URL}/rest/v1/settings?select=warnschwelle,tolerance,email_to&id=eq.global`,{headers});
       const [s] = await res.json();
-      warnschwelle = s.warnschwelle;
-      tolerance     = s.tolerance;
-      emailTo       = s.email_to;
-      inpWarn.value = warnschwelle;
-      inpTol.value  = tolerance;
-      inpMail.value = emailTo;
+      warnschwelle = s.warnschwelle; tolerance = s.tolerance; emailTo = s.email_to;
+      inpWarn.value = warnschwelle; inpTol.value = tolerance; inpMail.value = emailTo;
     }
     btnSave.onclick = async () => {
       spanStat.textContent = 'Speichern…';
@@ -126,19 +118,17 @@
           tolerance:    parseInt(inpTol.value,10),
           email_to:     inpMail.value
         };
-        const res = await fetch(`${URL}/rest/v1/settings?id=eq.global`,{method:'PATCH',headers,body:JSON.stringify(body)});
+        const res = await fetch(`${URL}/rest/v1/settings?id=eq.global`,{
+          method:'PATCH', headers, body:JSON.stringify(body)
+        });
         if (!res.ok) throw new Error(res.status);
-        warnschwelle = body.warnschwelle;
-        tolerance     = body.tolerance;
-        emailTo       = body.email_to;
-        spanStat.textContent = '✔️';
-        setTimeout(()=>spanStat.textContent='',1500);
-      } catch(e) {
-        console.error(e); spanStat.textContent = '❌';
+        spanStat.textContent = '✔️'; setTimeout(()=>spanStat.textContent='',1500);
+        warnschwelle = body.warnschwelle; tolerance = body.tolerance; emailTo = body.email_to;
+      } catch {
+        spanStat.textContent = '❌';
       }
     };
 
-    // Felle laden & rendern
     async function loadFelle() {
       container.textContent = 'Lade Daten…';
       const res = await fetch(`${URL}/rest/v1/felle?select=*,tolerance_per_item,skip_email&order=serie.asc`,{headers});
@@ -146,125 +136,132 @@
       container.innerHTML = data.length ? '' : '<p>Keine Einträge gefunden.</p>';
       data.forEach(f => {
         const card = document.createElement('div'); card.className='card';
-        // Titel & Wiki
         const title = document.createElement('div'); title.className='title';
         title.textContent = `${f.hersteller} – ${f.serie} ${f.groesse}`; card.appendChild(title);
         const wiki = document.createElement('div'); wiki.className='wiki';
         wiki.textContent = f.wiki||''; card.appendChild(wiki);
-        // Controls
+
         const ctr = document.createElement('div'); ctr.className='controls';
-        // Bestand inline edit (Admin) or display
+        // Inline Bestand edit
         if (adminMode) {
           const stockIn = document.createElement('input');
-          stockIn.type  = 'number';
-          stockIn.value = f.bestand;
-          stockIn.className = 'stock-input';
-          stockIn.onchange = () => updateItem({ id: f.id, bestand: parseInt(stockIn.value,10) });
+          stockIn.type='number'; stockIn.value=f.bestand; stockIn.className='stock-input';
+          stockIn.onchange = () => updateItem({id: f.id, bestand: parseInt(stockIn.value,10)});
           ctr.appendChild(stockIn);
         } else {
           const bd = document.createElement('div');
-          bd.innerHTML = `Bestand: <strong>${f.bestand}</strong>`; ctr.appendChild(bd);
+          bd.innerHTML = `Bestand: <strong>${f.bestand}</strong>`;
+          ctr.appendChild(bd);
         }
+
         // +/- Buttons
         const btns = document.createElement('div');
         ['minus','plus'].forEach(mode => {
           const b = document.createElement('button');
-          b.className = mode;
-          b.textContent = mode==='minus'?'-1':'+1';
+          b.className = mode; b.textContent = mode==='minus'?'-1':'+1';
           b.onclick = () => changeBestand(f.id, mode==='minus'?-1:1);
           btns.appendChild(b);
         });
         ctr.appendChild(btns);
-        // Toleranz pro Fell (Admin)
+
+        // Per-item tolerance
         if (adminMode) {
           const tolIn = document.createElement('input');
-          tolIn.type        = 'number';
-          tolIn.value       = f.tolerance_per_item!=null?f.tolerance_per_item:'';
-          tolIn.placeholder = 'tol';
-          tolIn.className   = 'tol-input';
-          tolIn.onchange    = () => updateItem({ id: f.id, tolerance_per_item: tolIn.value===''?null:parseInt(tolIn.value,10) });
+          tolIn.type='number';
+          tolIn.value = f.tolerance_per_item!=null?f.tolerance_per_item:'';
+          tolIn.className='tol-input';
+          tolIn.placeholder='tol';
+          tolIn.onchange = () => updateItem({ 
+            id: f.id, 
+            tolerance_per_item: tolIn.value===''? null : parseInt(tolIn.value,10)
+          });
           ctr.appendChild(tolIn);
         }
+
         card.appendChild(ctr);
         container.appendChild(card);
       });
     }
 
-    // Bestand oder Per-Item-Tolerance patchen
     async function updateItem(changes) {
-      await fetch(`${URL}/rest/v1/felle?id=eq.${encodeURIComponent(changes.id)}`, {
+      await fetch(`${URL}/rest/v1/felle?id=eq.${encodeURIComponent(changes.id)}`,{
         method:'PATCH', headers, body:JSON.stringify(changes)
       });
     }
 
-    // changeBestand mit Warn-Mail
     async function changeBestand(id, delta) {
       const r1 = await fetch(`${URL}/rest/v1/felle?select=bestand,tolerance_per_item,skip_email&id=eq.${encodeURIComponent(id)}`,{headers});
       const [{bestand,tolerance_per_item,skip_email}] = await r1.json();
-      const neu = bestand+delta;
-      await updateItem({ id, bestand: neu });
+      const neu = bestand + delta;
+      await updateItem({id, bestand: neu});
       if (!skip_email) {
         const tol = tolerance_per_item!=null?tolerance_per_item:tolerance;
-        if (neu <= warnschwelle+tol) await sendAlertWithList();
+        if (neu <= warnschwelle + tol) await sendAlertWithList();
       }
       await loadFelle();
     }
 
-    // CSV-Import
-    btnImport.onclick = () => fileInput.click();
-    fileInput.onchange = () => {
+    // CSV-Import: only update id & bestand
+    btnImport.onclick = ()=>fileInput.click();
+    fileInput.onchange = ()=>{
       const file = fileInput.files[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = async e => {
         const lines = e.target.result.split(/\r?\n/).filter(l=>l.trim());
-        const [header, ...rows] = lines.map(l=>l.split(','));
-        for (const cols of rows) {
-          const obj = {};
-          header.forEach((h,i)=>obj[h] = cols[i]);
-          const id = obj.id;
-          delete obj.id;
-          // convert numeric fields
-          if (obj.bestand != null) obj.bestand = parseInt(obj.bestand,10);
-          if (obj.tolerance_per_item != null) obj.tolerance_per_item = obj.tolerance_per_item===''?null:parseInt(obj.tolerance_per_item,10);
-          if (obj.skip_email != null) obj.skip_email = obj.skip_email==='true';
-          await updateItem({ id, ...obj });
+        const sep = lines[0].includes(';') ? ';' : ',';
+        const [header, ...rows] = lines.map(l=>l.split(sep).map(c=>c.trim()));
+        const idIdx = header.indexOf('id');
+        const stIdx = header.indexOf('bestand');
+        if (idIdx<0 || stIdx<0) {
+          return alert('CSV benötigt Spalten "id" und "bestand".');
         }
-        loadFelle();
+        for (const cols of rows) {
+          const id = cols[idIdx];
+          const st = parseInt(cols[stIdx],10);
+          if (!id || isNaN(st)) continue;
+          await updateItem({ id, bestand: st });
+        }
+        await loadFelle();
         alert('Import abgeschlossen');
       };
       reader.readAsText(file);
     };
 
-    // CSV-Export im Original-Format
-    btnExport.onclick = async () => {
-      const res = await fetch(`${URL}/rest/v1/felle`, { headers });
+    // CSV-Export (Semikolon)
+    btnExport.onclick = async ()=>{
+      const res = await fetch(`${URL}/rest/v1/felle`,{headers});
       const data = await res.json();
-      const header = Object.keys(data[0]||{}).join(',');
-      let csv = header + '\n';
-      data.forEach(f => {
-        csv += header.split(',').map(h => {
-          let v = f[h];
+      if (!data.length) return alert('Keine Daten zum Export');
+      const keys = Object.keys(data[0]);
+      const sep = ';';
+      let csv = keys.join(sep) + '\n';
+      data.forEach(f=>{
+        csv += keys.map(k=>{
+          let v = f[k];
           return v==null?'':String(v).replace(/"/g,'""');
-        }).join(',') + '\n';
+        }).join(sep) + '\n';
       });
-      const blob = new Blob([csv], { type:'text/csv' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href = url; a.download = 'COPY4DATABASE.csv';
-      a.click(); URL.revokeObjectURL(url);
+      const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+      const dlUrl = (window.URL || window.webkitURL).createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href     = dlUrl;
+      a.download = 'COPY4DATABASE.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      (window.URL || window.webkitURL).revokeObjectURL(dlUrl);
     };
 
-    // Warn-Mail mit individuellem Tol
-    async function sendAlertWithList() {
+    async function sendAlertWithList(){
       const thr = warnschwelle + tolerance;
       const res = await fetch(`${URL}/rest/v1/felle?select=hersteller,serie,groesse,bestand,tolerance_per_item,skip_email`,{headers});
       const all = await res.json();
       let msg = `Felle unter ihren Schwellen:\n\n`, count=0;
-      all.forEach(f => {
-        if (f.skip_email) return;
+      all.forEach(f=>{
+        if(f.skip_email) return;
         const tol = f.tolerance_per_item!=null?f.tolerance_per_item:tolerance;
-        if (f.bestand <= warnschwelle+tol) {
+        if(f.bestand<=warnschwelle+tol){
           msg += `• ${f.hersteller} – ${f.serie} ${f.groesse}: ${f.bestand} (tol=${tol})\n`;
           count++;
         }
@@ -274,10 +271,8 @@
         headers:{Accept:'application/json','Content-Type':'application/json'},
         body:JSON.stringify({_subject:`Warnung: ${count} Felle niedrig`,message:msg,_replyto:emailTo})
       });
-      console.log('📧 Warn-Mail gesendet');
     }
 
-    // Initialisierung
     await loadSettings();
     await loadFelle();
   });

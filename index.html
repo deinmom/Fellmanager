@@ -15,66 +15,92 @@
     .minus { background: #e53e3e; }
     .plus  { background: #38a169; }
   </style>
-  <!-- Supabase-JS via CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- 1) UMD-Version von Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
-
   <div class="header">Fellmanager</div>
-  <div id="container"></div>
+  <div id="container">Lade Daten…</div>
 
+  <!-- 2) Dein App-Skript, gewartet bis alles geladen ist -->
   <script>
-    // 1) Deine Supabase-Zugangsdaten:
-    const SUPABASE_URL     = "https://owrfgjypnemsxonmbrpj.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93cmZnanlwbmVtc3hvbmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczMTUyOTgsImV4cCI6MjA2Mjg5MTI5OH0.X1PymyDZqNe_Plmao8U6gdqFKP70VrFtuZTesgyZMwg";
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    document.addEventListener('DOMContentLoaded', () => {
+      // 3) Supabase-Zugangsdaten
+      const SUPABASE_URL     = 'https://owrfgjypnemsxonmbrpj.supabase.co';
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93cmZnanlwbmVtc3hvbmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczMTUyOTgsImV4cCI6MjA2Mjg5MTI5OH0.X1PymyDZqNe_Plmao8U6gdqFKP70VrFtuZTesgyZMwg';
 
-    const container = document.getElementById("container");
+      // 4) Client anlegen (verwende globales `supabase`)
+      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const container = document.getElementById('container');
 
-    // 2) Liste laden und anzeigen
-    async function loadFelle() {
-      const { data, error } = await supabase
-        .from("felle")
-        .select("*")
-        .order("serie", { ascending: true });
-      if (error) {
-        console.error(error);
-        container.innerHTML = "<p style='color:red'>Fehler beim Laden der Daten.</p>";
-        return;
+      // 5) Funktion zum Laden aller Felle
+      async function loadFelle() {
+        container.textContent = 'Lade Daten…';
+        try {
+          const { data, error } = await client
+            .from('felle')
+            .select('*')
+            .order('serie', { ascending: true });
+          if (error) throw error;
+
+          if (!data || data.length === 0) {
+            container.innerHTML = '<p>Keine Einträge gefunden.</p>';
+            return;
+          }
+
+          container.innerHTML = '';
+          data.forEach(fell => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+              <div class="title">${fell.hersteller} – ${fell.serie} ${fell.groesse}</div>
+              <div class="wiki">${fell.wiki || ''}</div>
+              <div class="controls">
+                <div>Bestand: <strong>${fell.bestand}</strong></div>
+                <div>
+                  <button class="minus">-1</button>
+                  <button class="plus">+1</button>
+                </div>
+              </div>`;
+            card.querySelector('.minus').onclick = () => changeBestand(fell.id, -1);
+            card.querySelector('.plus').onclick  = () => changeBestand(fell.id, +1);
+            container.append(card);
+          });
+        } catch (err) {
+          console.error('Fehler beim Laden:', err);
+          container.innerHTML = `<p style="color:red">Fehler beim Laden der Daten:<br>${err.message}</p>`;
+        }
       }
-      container.innerHTML = "";
-      data.forEach(fell => {
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-          <div class="title">${fell.hersteller} – ${fell.serie} ${fell.groesse}</div>
-          <div class="wiki">${fell.wiki}</div>
-          <div class="controls">
-            <div>Bestand: <strong>${fell.bestand}</strong></div>
-            <div>
-              <button class="minus">-1</button>
-              <button class="plus">+1</button>
-            </div>
-          </div>`;
-        // Button-Handler
-        card.querySelector(".minus").onclick = () => updateBestand(fell.id, -1);
-        card.querySelector(".plus").onclick  = () => updateBestand(fell.id, +1);
-        container.append(card);
-      });
-    }
 
-    // 3) Bestand aktualisieren
-    async function updateBestand(id, delta) {
-      const { error } = await supabase
-        .from("felle")
-        .update({ bestand: supabase.raw("bestand + ?", [delta]) })
-        .eq("id", id);
-      if (error) console.error("Update-Fehler:", error);
+      // 6) Funktion zum Ändern des Bestands
+      async function changeBestand(id, delta) {
+        try {
+          // aktuellen Bestand holen
+          const { data: [row], error: fetchErr } = await client
+            .from('felle')
+            .select('bestand')
+            .eq('id', id)
+            .single();
+          if (fetchErr) throw fetchErr;
+
+          // neuen Bestand setzen
+          const newBestand = row.bestand + delta;
+          const { error: updateErr } = await client
+            .from('felle')
+            .update({ bestand: newBestand })
+            .eq('id', id);
+          if (updateErr) throw updateErr;
+
+          // neu laden
+          loadFelle();
+        } catch (err) {
+          console.error('Update-Fehler:', err);
+        }
+      }
+
+      // 7) App starten
       loadFelle();
-    }
-
-    // Initial laden
-    loadFelle();
+    });
   </script>
 </body>
 </html>

@@ -5,76 +5,228 @@
   <title>Fellmanager</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body { max-width: 700px; margin: 2rem auto; font-family: sans-serif; }
-    .card { border: 1px solid #ccc; border-radius: 1rem; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-    .header { font-size: 24px; font-weight: bold; text-align: center; margin-bottom: 1rem; }
-    .title { font-size: 18px; font-weight: bold; }
-    .wiki  { font-size: 14px; color: #555; margin: .5rem 0; }
-    .controls { display: flex; justify-content: space-between; align-items: center; }
-    .controls button { border: none; color: white; padding: .3rem .7rem; border-radius: 5px; cursor: pointer; }
-    .minus { background: #e53e3e; }
-    .plus  { background: #38a169; }
+    body { max-width:700px; margin:2rem auto; font-family:sans-serif; }
+    .header { font-size:24px; font-weight:bold; text-align:center; margin:1rem 0; }
+    #settings { border:1px solid #888; padding:1rem; margin-bottom:2rem; border-radius:.5rem; }
+    #settings label { display:block; margin:.5rem 0 .2rem; }
+    #settings input { width:4rem; padding:.2rem; }
+    #settings button { margin-top:1rem; padding:.4rem .8rem; }
+    .card { border:1px solid #ccc; border-radius:1rem; padding:1rem; margin-bottom:1rem; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    .title { font-size:18px; font-weight:bold; }
+    .wiki  { font-size:14px; color:#555; margin:.5rem 0; }
+    .controls { display:flex; justify-content:space-between; align-items:center; }
+    .controls button { border:none; color:white; padding:.3rem .7rem; border-radius:.25rem; cursor:pointer; }
+    .minus { background:#e53e3e; }
+    .plus  { background:#38a169; }
+    .tol-input { width:3rem; margin-left:.5rem; }
   </style>
-  <!-- Supabase-JS via CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-
   <div class="header">Fellmanager</div>
-  <div id="container"></div>
+
+  <!-- Einstellungen -->
+  <div id="settings">
+    <h2>Einstellungen</h2>
+    <label>Warnschwelle:
+      <input type="number" id="warnschwelle" />
+    </label>
+    <label>Globale Toleranz:
+      <input type="number" id="tolerance" />
+    </label>
+    <label>Warn-Mail an:
+      <input type="email" id="emailTo" style="width:200px" />
+    </label>
+    <button id="saveSettings">Speichern</button>
+    <span id="saveStatus" style="margin-left:1rem;"></span>
+  </div>
+
+  <div id="container">Lade Daten…</div>
 
   <script>
-    // 1) Deine Supabase-Zugangsdaten:
-    const SUPABASE_URL     = "https://owrfgjypnemsxonmbrpj.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93cmZnanlwbmVtc3hvbmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczMTUyOTgsImV4cCI6MjA2Mjg5MTI5OH0.X1PymyDZqNe_Plmao8U6gdqFKP70VrFtuZTesgyZMwg";
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  document.addEventListener('DOMContentLoaded', async () => {
+    // --- KONFIGURATION ---
+    const URL     = 'https://owrfgjypnemsxonmbrpj.supabase.co';
+    const KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93cmZnanlwbmVtc3hvbm1icnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczMTUyOTgsImV4cCI6MjA2Mjg5MTI5OH0.X1PymyDZqNe_Plmao8U6gdqFKP70VrFtuZTesgyZMwg';
+    const FORM_ID = 'xeogngrz';
 
-    const container = document.getElementById("container");
+    const headers = {
+      apikey:        KEY,
+      Authorization: 'Bearer ' + KEY,
+      'Content-Type':'application/json'
+    };
 
-    // 2) Liste laden und anzeigen
-    async function loadFelle() {
-      const { data, error } = await supabase
-        .from("felle")
-        .select("*")
-        .order("serie", { ascending: true });
-      if (error) {
-        console.error(error);
-        container.innerHTML = "<p style='color:red'>Fehler beim Laden der Daten.</p>";
-        return;
+    // DOM-Elemente
+    const inpWarn  = document.getElementById('warnschwelle');
+    const inpTol   = document.getElementById('tolerance');
+    const inpMail  = document.getElementById('emailTo');
+    const btnSave  = document.getElementById('saveSettings');
+    const spanStat = document.getElementById('saveStatus');
+    const container= document.getElementById('container');
+
+    // Globale Werte
+    let warnschwelle = 0, tolerance = 0, emailTo = '';
+
+    // Einstellungen laden
+    async function loadSettings() {
+      const res = await fetch(
+        `${URL}/rest/v1/settings?select=warnschwelle,tolerance,email_to&id=eq.global`,
+        { headers }
+      );
+      const [s] = await res.json();
+      warnschwelle = s.warnschwelle;
+      tolerance     = s.tolerance;
+      emailTo       = s.email_to;
+      inpWarn.value = warnschwelle;
+      inpTol.value  = tolerance;
+      inpMail.value = emailTo;
+    }
+
+    // Einstellungen speichern
+    btnSave.onclick = async () => {
+      spanStat.textContent = 'Speichern…';
+      try {
+        const body = {
+          warnschwelle: parseInt(inpWarn.value,10),
+          tolerance:    parseInt(inpTol.value,10),
+          email_to:     inpMail.value
+        };
+        const res = await fetch(
+          `${URL}/rest/v1/settings?id=eq.global`,
+          {
+            method:'PATCH',
+            headers,
+            body: JSON.stringify(body)
+          }
+        );
+        if (!res.ok) throw new Error(res.status);
+        warnschwelle = body.warnschwelle;
+        tolerance     = body.tolerance;
+        emailTo       = body.email_to;
+        spanStat.textContent = '✔️';
+        setTimeout(()=>spanStat.textContent='',1500);
+      } catch(e) {
+        console.error(e);
+        spanStat.textContent = '❌';
       }
-      container.innerHTML = "";
-      data.forEach(fell => {
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-          <div class="title">${fell.hersteller} – ${fell.serie} ${fell.groesse}</div>
-          <div class="wiki">${fell.wiki}</div>
-          <div class="controls">
-            <div>Bestand: <strong>${fell.bestand}</strong></div>
-            <div>
-              <button class="minus">-1</button>
-              <button class="plus">+1</button>
-            </div>
-          </div>`;
-        // Button-Handler
-        card.querySelector(".minus").onclick = () => updateBestand(fell.id, -1);
-        card.querySelector(".plus").onclick  = () => updateBestand(fell.id, +1);
-        container.append(card);
+    };
+
+    // Felle laden & rendern
+    async function loadFelle() {
+      container.textContent = 'Lade Daten…';
+      const res = await fetch(
+        `${URL}/rest/v1/felle?select=*,tolerance_per_item,skip_email&order=serie.asc`,
+        { headers }
+      );
+      const data = await res.json();
+      container.innerHTML = data.length
+        ? ''
+        : '<p>Keine Einträge gefunden.</p>';
+
+      data.forEach(f => {
+        const card = document.createElement('div'); card.className='card';
+        // Titel
+        const t = document.createElement('div'); t.className='title';
+        t.textContent = `${f.hersteller} – ${f.serie} ${f.groesse}`; card.appendChild(t);
+        // Wiki
+        const w = document.createElement('div'); w.className='wiki';
+        w.textContent = f.wiki||''; card.appendChild(w);
+        // Controls
+        const ctr = document.createElement('div'); ctr.className='controls';
+
+        // Bestand
+        const bd = document.createElement('div');
+        bd.innerHTML = `Bestand: <strong>${f.bestand}</strong>`; ctr.appendChild(bd);
+
+        // +/- Buttons
+        const btns = document.createElement('div');
+        ['minus','plus'].forEach(mode=>{
+          const btn = document.createElement('button');
+          btn.className = mode;
+          btn.textContent = mode==='minus'?'-1':'+1';
+          btn.onclick = ()=>changeBestand(f.id, mode==='minus'?-1:1);
+          btns.appendChild(btn);
+        });
+        ctr.appendChild(btns);
+
+        // Per-Item-Toleranz anzeigen (optional editierbar)
+        const tolIn = document.createElement('input');
+        tolIn.type      = 'number';
+        tolIn.value     = f.tolerance_per_item != null ? f.tolerance_per_item : '';
+        tolIn.placeholder = 'tol';
+        tolIn.className = 'tol-input';
+        tolIn.onchange  = ()=>updateItemTolerance(f.id, tolIn.value);
+        ctr.appendChild(tolIn);
+
+        card.appendChild(ctr);
+        container.appendChild(card);
       });
     }
 
-    // 3) Bestand aktualisieren
-    async function updateBestand(id, delta) {
-      const { error } = await supabase
-        .from("felle")
-        .update({ bestand: supabase.raw("bestand + ?", [delta]) })
-        .eq("id", id);
-      if (error) console.error("Update-Fehler:", error);
-      loadFelle();
+    // Bestand ändern & ggf. Mail
+    async function changeBestand(id, delta) {
+      // a) holen
+      const r1 = await fetch(
+        `${URL}/rest/v1/felle?select=bestand,tolerance_per_item,skip_email&id=eq.${encodeURIComponent(id)}`,
+        { headers }
+      );
+      const [{ bestand, tolerance_per_item, skip_email }] = await r1.json();
+      const neu = bestand + delta;
+      // b) patch Bestand
+      await fetch(
+        `${URL}/rest/v1/felle?id=eq.${encodeURIComponent(id)}`,
+        { method:'PATCH', headers, body: JSON.stringify({ bestand: neu }) }
+      );
+      // c) Mail prüfen
+      if (!skip_email) {
+        const tol = tolerance_per_item != null ? tolerance_per_item : tolerance;
+        if (neu <= warnschwelle + tol) await sendAlertWithList();
+      }
+      await loadFelle();
     }
 
-    // Initial laden
-    loadFelle();
+    // Per-Item-Toleranz patchen
+    async function updateItemTolerance(id,value) {
+      const v = value === '' ? null : parseInt(value,10);
+      await fetch(
+        `${URL}/rest/v1/felle?id=eq.${encodeURIComponent(id)}`,
+        { method:'PATCH', headers, body: JSON.stringify({ tolerance_per_item: v }) }
+      );
+    }
+
+    // Warn-Mail mit korrekten Schwellen
+    async function sendAlertWithList() {
+      const thr = warnschwelle + tolerance;
+      const res = await fetch(
+        `${URL}/rest/v1/felle?select=hersteller,serie,groesse,bestand,tolerance_per_item,skip_email`,
+        { headers }
+      );
+      const all = await res.json();
+      let msg = `Felle unter ihren Schwellen:\n\n`;
+      let count = 0;
+      all.forEach(f => {
+        if (f.skip_email) return;
+        const tol = f.tolerance_per_item != null ? f.tolerance_per_item : tolerance;
+        if (f.bestand <= warnschwelle + tol) {
+          msg += `• ${f.hersteller} – ${f.serie} ${f.groesse}: ${f.bestand} (tol=${tol})\n`;
+          count++;
+        }
+      });
+      await fetch(`https://formspree.io/f/${FORM_ID}`, {
+        method:'POST',
+        headers:{Accept:'application/json','Content-Type':'application/json'},
+        body:JSON.stringify({
+          _subject:`Warnung: ${count} Felle niedrig`,
+          message: msg,
+          _replyto: emailTo
+        })
+      });
+      console.log('📧 Warn-Mail gesendet');
+    }
+
+    // Initial
+    await loadSettings();
+    await loadFelle();
+  });
   </script>
 </body>
 </html>

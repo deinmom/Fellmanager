@@ -1,285 +1,359 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <title>Fellmanager</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <style>
-    body { max-width:700px; margin:2rem auto; font-family:sans-serif; }
-    .header { font-size:24px; font-weight:bold; text-align:center; margin:1rem 0; }
-    .btn { padding:.5rem 1rem; margin:0 .5rem .5rem 0; cursor:pointer; border:none; border-radius:.25rem; }
-    .btn-admin { background:#3182ce; color:white; }
-    .btn-logout { background:#e53e3e; color:white; }
-    .btn-import { background:#d69e2e; color:white; }
-    .btn-export { background:#2f855a; color:white; }
-    #settingsPanel { border:1px solid #888; padding:1rem; margin-bottom:2rem; border-radius:.5rem; display:none; }
-    #settingsPanel label { display:block; margin:.5rem 0 .2rem; }
-    #settingsPanel input { width:4rem; padding:.2rem; }
-    #settingsPanel button { margin-top:1rem; padding:.4rem .8rem; }
-    .card { border:1px solid #ccc; border-radius:1rem; padding:1rem; margin-bottom:1rem; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-    .title { font-size:18px; font-weight:bold; }
-    .wiki  { font-size:14px; color:#555; margin:.5rem 0; }
-    .controls { display:flex; flex-wrap: wrap; justify-content:space-between; align-items:center; }
-    .controls > div { margin: .3rem; }
-    .controls button, .controls input { margin-right:.5rem; }
-    .minus { background:#e53e3e; color:white; }
-    .plus  { background:#38a169; color:white; }
-    .tol-input, .stock-input { width:4rem; }
-    #fileInput { display:none; }
+    body { margin:0; font-family:sans-serif; background:#f5f5f5; }
+    header { background:#3182ce; color:white; padding:1rem; text-align:center; font-size:1.5rem; position:sticky; top:0; }
+    #toolbar { padding:1rem; display:flex; flex-wrap:wrap; gap:.5rem; background:#fff; justify-content:center; }
+    .btn { padding:1rem; border:none; border-radius:.5rem; cursor:pointer; font-size:1.1rem; min-width:3rem; margin:.25rem; }
+    .btn-home    { background:#718096; color:white; }
+    .btn-admin   { background:#3182ce; color:white; }
+    .btn-logout  { background:#e53e3e; color:white; }
+    .btn-settings{ background:#4c51bf; color:white; }
+    .btn-import  { background:#d69e2e; color:white; }
+    .btn-export  { background:#2f855a; color:white; }
+    .btn-filter  { background:#4a5568; color:white; }
+    .btn-history { background:#805ad5; color:white; }
+
+    #settingsPanel,#filterPanel,#historyPanel { background:#fff; margin:1rem; padding:1rem; border-radius:.5rem; display:none; }
+    #filterPanel { text-align:center; }
+    #filterPanel .section { margin-top:1rem; text-align:left; font-weight:bold; }
+    #menu,#submenu,#cards { padding:1rem; }
+    .card { background:#fff; border-radius:1rem; padding:1.5rem; margin:.5rem 1rem; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+    .title { font-weight:bold; font-size:1.2rem; margin-bottom:.5rem; }
+    .wiki  { font-size:.95rem; color:#555; margin:.5rem 0; }
+    .controls { display:flex; justify-content:center; align-items:center; gap:1rem; margin-top:.75rem; }
+    .controls button { border:none; padding:.8rem 1.2rem; border-radius:.5rem; color:white; cursor:pointer; font-size:1.1rem; min-width:3rem; }
+    .minus { background:#e53e3e; }
+    .plus  { background:#38a169; }
+    input.stock-input,input.tol-input { width:5rem; padding:.5rem; font-size:1rem; margin-right:.5rem; border:1px solid #ccc; border-radius:.25rem; }
+    select#historySelect { width:100%; padding:.8rem; font-size:1rem; margin-bottom:.5rem; }
+    #historyList div { padding:.5rem 0; font-size:1rem; }
   </style>
 </head>
 <body>
-  <div class="header">Fellmanager</div>
-  <div>
-    <button id="btnAdmin" class="btn btn-admin">Admin Modus</button>
-    <button id="btnLogout" class="btn btn-logout" style="display:none;">Logout Admin</button>
-    <button id="btnImport" class="btn btn-import" style="display:none;">CSV importieren</button>
-    <button id="btnExport" class="btn btn-export">CSV exportieren</button>
-    <input type="file" id="fileInput" accept=".csv" />
+  <header>Fellmanager</header>
+  <div id="toolbar">
+    <button id="btnHome"    class="btn btn-home">Home</button>
+    <button id="btnAdmin"   class="btn btn-admin">Admin Modus</button>
+    <button id="btnLogout"  class="btn btn-logout" style="display:none;">Logout</button>
+    <button id="btnSettings"class="btn btn-settings" style="display:none;">Einstellungen</button>
+    <button id="btnImport"  class="btn btn-import" style="display:none;">Import</button>
+    <button id="btnExport"  class="btn btn-export">Export</button>
+    <button id="btnFilter"  class="btn btn-filter">Filter</button>
+    <button id="btnHistory" class="btn btn-history">Historie</button>
+    <input type="file" id="fileInput" accept=".csv" style="display:none;"/>
   </div>
 
   <div id="settingsPanel">
     <h2>Einstellungen</h2>
-    <label>Warnschwelle:
-      <input type="number" id="warnschwelle" />
-    </label>
-    <label>Globale Toleranz:
-      <input type="number" id="tolerance" />
-    </label>
-    <label>Warn-Mail an:
-      <input type="email" id="emailTo" style="width:200px" />
-    </label>
-    <button id="saveSettings">Speichern</button>
-    <span id="saveStatus" style="margin-left:1rem;"></span>
+    <label>Warnschwelle: <input type="number" id="warnschwelle"/></label><br/>
+    <label>Globale Toleranz: <input type="number" id="tolerance"/></label><br/>
+    <label>Warn-Mail an: <input type="email" id="emailTo" style="width:100%;"/></label><br/>
+    <button id="saveSettings" class="btn">Speichern</button>
+    <span id="saveStatus"></span>
   </div>
 
-  <div id="container">Lade Daten…</div>
+  <div id="filterPanel">
+    <h2>Filter</h2>
+    <div class="section">Typ</div><div id="filterTyp"></div>
+    <div class="section">Hersteller</div><div id="filterHersteller"></div>
+    <div class="section">Serie</div><div id="filterSerie"></div>
+    <button id="btnClearFilters" class="btn">Zurücksetzen</button>
+  </div>
+
+  <div id="historyPanel">
+    <h2>Historie</h2>
+    <select id="historySelect"><option value="">– Fell wählen –</option></select>
+    <div id="historyList">Keine Historie.</div>
+  </div>
+
+  <div id="menu"></div>
+  <div id="submenu" style="display:none;"></div>
+  <div id="cards" style="display:none;"></div>
 
   <script>
   document.addEventListener('DOMContentLoaded', async () => {
-    const URL        = 'https://owrfgjypnemsxonmbrpj.supabase.co';
-    const KEY        = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93cmZnanlwbmVtc3hvbm1icnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczMTUyOTgsImV4cCI6MjA2Mjg5MTI5OH0.X1PymyDZqNe_Plmao8U6gdqFKP70VrFtuZTesgyZMwg';
-    const FORM_ID    = 'xeogngrz';
-    const ADMIN_PASS = 'Admin';
+    const URL   = 'https://owrfgjypnemsxonmbrpj.supabase.co';
+    const KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93cmZnanlwbmVtc3hvbm1icnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczMTUyOTgsImV4cCI6MjA2Mjg5MTI5OH0.X1PymyDZqNe_Plmao8U6gdqFKP70VrFtuZTesgyZMwg';
+    const ADMIN = 'Admin';
+    const headers = { apikey:KEY, Authorization:'Bearer '+KEY };
 
-    const headers = {
-      apikey:        KEY,
-      Authorization: 'Bearer ' + KEY,
-      'Content-Type':'application/json'
-    };
+    let adminMode=false, allData=[], filters={typ:null,hersteller:null,serie:null}, curMan, curField, curValue;
 
-    // UI-Elemente
-    const btnAdmin    = document.getElementById('btnAdmin');
-    const btnLogout   = document.getElementById('btnLogout');
-    const btnImport   = document.getElementById('btnImport');
-    const btnExport   = document.getElementById('btnExport');
-    const fileInput   = document.getElementById('fileInput');
-    const settingsDiv = document.getElementById('settingsPanel');
-    const inpWarn     = document.getElementById('warnschwelle');
-    const inpTol      = document.getElementById('tolerance');
-    const inpMail     = document.getElementById('emailTo');
-    const btnSave     = document.getElementById('saveSettings');
-    const spanStat    = document.getElementById('saveStatus');
-    const container   = document.getElementById('container');
+    // UI Refs
+    const btnHome    = document.getElementById('btnHome'),
+          btnAdmin   = document.getElementById('btnAdmin'),
+          btnLogout  = document.getElementById('btnLogout'),
+          btnSettings= document.getElementById('btnSettings'),
+          btnImport  = document.getElementById('btnImport'),
+          btnExport  = document.getElementById('btnExport'),
+          btnFilter  = document.getElementById('btnFilter'),
+          btnHistory = document.getElementById('btnHistory'),
+          fileInput  = document.getElementById('fileInput'),
+          setPanel   = document.getElementById('settingsPanel'),
+          filtPanel  = document.getElementById('filterPanel'),
+          histPanel  = document.getElementById('historyPanel'),
+          inpWarn    = document.getElementById('warnschwelle'),
+          inpTol     = document.getElementById('tolerance'),
+          inpMail    = document.getElementById('emailTo'),
+          btnSave    = document.getElementById('saveSettings'),
+          spanStat   = document.getElementById('saveStatus'),
+          filtTyp    = document.getElementById('filterTyp'),
+          filtHerst  = document.getElementById('filterHersteller'),
+          filtSerie  = document.getElementById('filterSerie'),
+          btnClear   = document.getElementById('btnClearFilters'),
+          histSelect = document.getElementById('historySelect'),
+          histList   = document.getElementById('historyList'),
+          menu       = document.getElementById('menu'),
+          submenu    = document.getElementById('submenu'),
+          cards      = document.getElementById('cards');
 
-    let adminMode = false;
-    let warnschwelle = 0, tolerance = 0, emailTo = '';
-
-    // Admin-Login
-    btnAdmin.onclick = () => {
-      const pw = prompt('Admin-Passwort eingeben:');
-      if (pw === ADMIN_PASS) {
-        adminMode = true;
-        settingsDiv.style.display = 'block';
-        btnAdmin.style.display    = 'none';
-        btnLogout.style.display   = 'inline-block';
-        btnImport.style.display   = 'inline-block';
-        loadSettings();
-        loadFelle();
-      } else alert('Falsches Passwort');
-    };
-    btnLogout.onclick = () => {
-      adminMode = false;
-      settingsDiv.style.display = 'none';
-      btnLogout.style.display   = 'none';
-      btnAdmin.style.display    = 'inline-block';
-      btnImport.style.display   = 'none';
-      loadFelle();
-    };
-
-    // Einstellungen laden/speichern
-    async function loadSettings() {
-      const res = await fetch(`${URL}/rest/v1/settings?select=warnschwelle,tolerance,email_to&id=eq.global`,{headers});
-      const [s] = await res.json();
-      warnschwelle = s.warnschwelle;
-      tolerance     = s.tolerance;
-      emailTo       = s.email_to;
-      inpWarn.value = warnschwelle;
-      inpTol.value  = tolerance;
-      inpMail.value = emailTo;
+    // Load settings & data
+    async function loadSettings(){
+      const r = await fetch(`${URL}/rest/v1/settings?select=warnschwelle,tolerance,email_to&id=eq.global`, { headers });
+      const [s] = await r.json();
+      inpWarn.value = s.warnschwelle; inpTol.value = s.tolerance; inpMail.value = s.email_to;
     }
-    btnSave.onclick = async () => {
-      spanStat.textContent = 'Speichern…';
-      try {
-        const body = {
-          warnschwelle: parseInt(inpWarn.value,10),
-          tolerance:    parseInt(inpTol.value,10),
+    btnSave.onclick = async ()=>{
+      spanStat.textContent = '…';
+      await fetch(`${URL}/rest/v1/settings?id=eq.global`, {
+        method:'PATCH',
+        headers:{ ...headers, 'Content-Type':'application/json' },
+        body: JSON.stringify({
+          warnschwelle: parseInt(inpWarn.value),
+          tolerance:    parseInt(inpTol.value),
           email_to:     inpMail.value
-        };
-        const res = await fetch(`${URL}/rest/v1/settings?id=eq.global`,{method:'PATCH',headers,body:JSON.stringify(body)});
-        if (!res.ok) throw new Error(res.status);
-        warnschwelle = body.warnschwelle;
-        tolerance     = body.tolerance;
-        emailTo       = body.email_to;
-        spanStat.textContent = '✔️';
-        setTimeout(()=>spanStat.textContent='',1500);
-      } catch(e) {
-        console.error(e); spanStat.textContent = '❌';
-      }
+        })
+      });
+      spanStat.textContent = '✔️';
     };
-
-    // Felle laden & rendern
-    async function loadFelle() {
-      container.textContent = 'Lade Daten…';
-      const res = await fetch(`${URL}/rest/v1/felle?select=*,tolerance_per_item,skip_email&order=serie.asc`,{headers});
-      const data = await res.json();
-      container.innerHTML = data.length ? '' : '<p>Keine Einträge gefunden.</p>';
-      data.forEach(f => {
-        const card = document.createElement('div'); card.className='card';
-        // Titel & Wiki
-        const title = document.createElement('div'); title.className='title';
-        title.textContent = `${f.hersteller} – ${f.serie} ${f.groesse}`; card.appendChild(title);
-        const wiki = document.createElement('div'); wiki.className='wiki';
-        wiki.textContent = f.wiki||''; card.appendChild(wiki);
-        // Controls
-        const ctr = document.createElement('div'); ctr.className='controls';
-        // Bestand inline edit (Admin) or display
-        if (adminMode) {
-          const stockIn = document.createElement('input');
-          stockIn.type  = 'number';
-          stockIn.value = f.bestand;
-          stockIn.className = 'stock-input';
-          stockIn.onchange = () => updateItem({ id: f.id, bestand: parseInt(stockIn.value,10) });
-          ctr.appendChild(stockIn);
-        } else {
-          const bd = document.createElement('div');
-          bd.innerHTML = `Bestand: <strong>${f.bestand}</strong>`; ctr.appendChild(bd);
-        }
-        // +/- Buttons
-        const btns = document.createElement('div');
-        ['minus','plus'].forEach(mode => {
-          const b = document.createElement('button');
-          b.className = mode;
-          b.textContent = mode==='minus'?'-1':'+1';
-          b.onclick = () => changeBestand(f.id, mode==='minus'?-1:1);
-          btns.appendChild(b);
-        });
-        ctr.appendChild(btns);
-        // Toleranz pro Fell (Admin)
-        if (adminMode) {
-          const tolIn = document.createElement('input');
-          tolIn.type        = 'number';
-          tolIn.value       = f.tolerance_per_item!=null?f.tolerance_per_item:'';
-          tolIn.placeholder = 'tol';
-          tolIn.className   = 'tol-input';
-          tolIn.onchange    = () => updateItem({ id: f.id, tolerance_per_item: tolIn.value===''?null:parseInt(tolIn.value,10) });
-          ctr.appendChild(tolIn);
-        }
-        card.appendChild(ctr);
-        container.appendChild(card);
-      });
+    async function loadData(){
+      const r = await fetch(`${URL}/rest/v1/felle?select=*,typ_a,typ_b&order=hersteller,serie,groesse`, { headers });
+      allData = await r.json();
     }
-
-    // Bestand oder Per-Item-Tolerance patchen
-    async function updateItem(changes) {
-      await fetch(`${URL}/rest/v1/felle?id=eq.${encodeURIComponent(changes.id)}`, {
-        method:'PATCH', headers, body:JSON.stringify(changes)
-      });
-    }
-
-    // changeBestand mit Warn-Mail
-    async function changeBestand(id, delta) {
-      const r1 = await fetch(`${URL}/rest/v1/felle?select=bestand,tolerance_per_item,skip_email&id=eq.${encodeURIComponent(id)}`,{headers});
-      const [{bestand,tolerance_per_item,skip_email}] = await r1.json();
-      const neu = bestand+delta;
-      await updateItem({ id, bestand: neu });
-      if (!skip_email) {
-        const tol = tolerance_per_item!=null?tolerance_per_item:tolerance;
-        if (neu <= warnschwelle+tol) await sendAlertWithList();
-      }
-      await loadFelle();
-    }
-
-    // CSV-Import
-    btnImport.onclick = () => fileInput.click();
-    fileInput.onchange = () => {
-      const file = fileInput.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async e => {
-        const lines = e.target.result.split(/\r?\n/).filter(l=>l.trim());
-        const [header, ...rows] = lines.map(l=>l.split(','));
-        for (const cols of rows) {
-          const obj = {};
-          header.forEach((h,i)=>obj[h] = cols[i]);
-          const id = obj.id;
-          delete obj.id;
-          // convert numeric fields
-          if (obj.bestand != null) obj.bestand = parseInt(obj.bestand,10);
-          if (obj.tolerance_per_item != null) obj.tolerance_per_item = obj.tolerance_per_item===''?null:parseInt(obj.tolerance_per_item,10);
-          if (obj.skip_email != null) obj.skip_email = obj.skip_email==='true';
-          await updateItem({ id, ...obj });
-        }
-        loadFelle();
-        alert('Import abgeschlossen');
-      };
-      reader.readAsText(file);
-    };
-
-    // CSV-Export im Original-Format
-    btnExport.onclick = async () => {
-      const res = await fetch(`${URL}/rest/v1/felle`, { headers });
-      const data = await res.json();
-      const header = Object.keys(data[0]||{}).join(',');
-      let csv = header + '\n';
-      data.forEach(f => {
-        csv += header.split(',').map(h => {
-          let v = f[h];
-          return v==null?'':String(v).replace(/"/g,'""');
-        }).join(',') + '\n';
-      });
-      const blob = new Blob([csv], { type:'text/csv' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href = url; a.download = 'COPY4DATABASE.csv';
-      a.click(); URL.revokeObjectURL(url);
-    };
-
-    // Warn-Mail mit individuellem Tol
-    async function sendAlertWithList() {
-      const thr = warnschwelle + tolerance;
-      const res = await fetch(`${URL}/rest/v1/felle?select=hersteller,serie,groesse,bestand,tolerance_per_item,skip_email`,{headers});
-      const all = await res.json();
-      let msg = `Felle unter ihren Schwellen:\n\n`, count=0;
-      all.forEach(f => {
-        if (f.skip_email) return;
-        const tol = f.tolerance_per_item!=null?f.tolerance_per_item:tolerance;
-        if (f.bestand <= warnschwelle+tol) {
-          msg += `• ${f.hersteller} – ${f.serie} ${f.groesse}: ${f.bestand} (tol=${tol})\n`;
-          count++;
-        }
-      });
-      await fetch(`https://formspree.io/f/${FORM_ID}`,{
-        method:'POST',
-        headers:{Accept:'application/json','Content-Type':'application/json'},
-        body:JSON.stringify({_subject:`Warnung: ${count} Felle niedrig`,message:msg,_replyto:emailTo})
-      });
-      console.log('📧 Warn-Mail gesendet');
-    }
-
-    // Initialisierung
     await loadSettings();
-    await loadFelle();
+    await loadData();
+
+    // Home
+    btnHome.onclick = ()=>{
+      setPanel.style.display   = 'none';
+      filtPanel.style.display  = 'none';
+      histPanel.style.display  = 'none';
+      submenu.style.display    = 'none';
+      menu.style.display       = '';
+      cards.style.display      = 'none';
+      btnLogout.style.display  = adminMode?'':'none';
+      btnSettings.style.display= adminMode?'':'none';
+      btnImport.style.display  = adminMode?'':'none';
+      fileInput.style.display  = adminMode?'':'none';
+      renderMenu();
+    };
+
+    // Admin login/logout
+    btnAdmin.onclick = ()=>{
+      const pw = prompt('Admin-Passwort:');
+      if(pw===ADMIN){
+        adminMode = true;
+        btnLogout.style.display   = '';
+        btnSettings.style.display = '';
+        btnImport.style.display   = '';
+        fileInput.style.display   = '';
+        btnAdmin.style.display    = 'none';
+      }
+    };
+    btnLogout.onclick = ()=>{
+      adminMode = false;
+      btnAdmin.style.display    = '';
+      btnLogout.style.display   = 'none';
+      btnSettings.style.display = 'none';
+      btnImport.style.display   = 'none';
+      fileInput.style.display   = 'none';
+      setPanel.style.display    = 'none';
+      filtPanel.style.display   = 'none';
+      histPanel.style.display   = 'none';
+      submenu.style.display     = 'none';
+      menu.style.display        = '';
+      cards.style.display       = 'none';
+    };
+
+    // Toggle settings panel
+    btnSettings.onclick = ()=> {
+      setPanel.style.display = setPanel.style.display==='block'?'none':'block';
+    };
+
+    // CSV Import with robust id-check
+    fileInput.onchange = async () => {
+      const text = await fileInput.files[0].text();
+      const lines = text.split(/\r?\n/).filter(l=>l.trim());
+      const sep   = lines[0].includes(';') ? ';' : ',';
+      const [hdr,...rows] = lines.map(l=>l.split(sep).map(c=>c.trim()));
+      const idIndex     = hdr.indexOf('id');
+      const bestandIndex= hdr.indexOf('bestand');
+      if(idIndex<0 || bestandIndex<0) {
+        return alert('CSV muss Spalten "id" und "bestand" enthalten.');
+      }
+      for(const cols of rows){
+        const id = cols[idIndex], newBest = parseInt(cols[bestandIndex],10);
+        if(!id||isNaN(newBest)) continue;
+        const oldEntry = allData.find(f=>f.id===id);
+        if(!oldEntry){
+          console.warn(`Import: Kein Eintrag für id="${id}", übersprungen.`);
+          continue;
+        }
+        const diff = newBest - oldEntry.bestand;
+        if(diff!==0) await updateLog(id,diff);
+      }
+      alert('Import abgeschlossen');
+    };
+
+    // CSV Export
+    btnExport.onclick = () => {
+      if(!allData.length) return alert('Keine Daten zum Export');
+      const date = new Date().toISOString().split('T')[0];
+      const filename = `Fellbestand_${date}.csv`;
+      const sep =';';
+      const keys=Object.keys(allData[0]);
+      let csv = keys.join(sep)+'\n';
+      allData.forEach(f=>{ csv+=keys.map(k=>f[k]==null?'':String(f[k]).replace(/"/g,'""')).join(sep)+'\n'; });
+      const blob = new Blob([csv],{type:'text/csv'});
+      const _URL = window.URL||window.webkitURL;
+      const url = _URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download=filename;
+      document.body.append(a); a.click(); a.remove(); _URL.revokeObjectURL(url);
+    };
+
+    // Filter
+    btnFilter.onclick = ()=>{ filtPanel.style.display=filtPanel.style.display==='block'?'none':'block'; buildFilters(); };
+    btnClear.onclick  = ()=>{ filters={typ:null,hersteller:null,serie:null}; buildFilters(); renderMenu(); };
+    function buildFilters(){
+      [['typ',filtTyp,['typ_a','typ_b']],
+       ['hersteller',filtHerst,['hersteller']],
+       ['serie',filtSerie,['serie']]]
+      .forEach(([key,cont,fields])=>{
+        cont.innerHTML='';
+        const vals = Array.from(new Set(
+          allData.filter(f=>!filters.hersteller||f.hersteller===filters.hersteller)
+                 .flatMap(f=>fields.flatMap(fld=>Array.isArray(f[fld])?f[fld]:[f[fld]]))
+                 .filter(Boolean)
+        )).sort();
+        vals.forEach(v=>{
+          const b=document.createElement('button');
+          b.textContent=v; b.className='btn';
+          if(filters[key]===v) b.classList.add('btn-admin');
+          b.onclick=()=>{
+            filters[key]=filters[key]===v?null:v;
+            buildFilters(); renderMenu();
+          };
+          cont.appendChild(b);
+        });
+      });
+    }
+
+    // History
+    btnHistory.onclick = ()=>{
+      const show=histPanel.style.display!=='block';
+      histPanel.style.display = show?'block':'none';
+      if(show){
+        histList.textContent='Lade…';
+        histSelect.innerHTML='<option></option>';
+        allData.forEach(f=> histSelect.add(new Option(`${f.hersteller}–${f.serie} ${f.groesse}`,f.id)));
+      }
+    };
+    histSelect.onchange = async ()=>{
+      const id=histSelect.value;
+      if(!id) return histList.textContent='Keine Historie.';
+      const r = await fetch(`${URL}/rest/v1/history?select=delta,timestamp&fell_id=eq.${encodeURIComponent(id)}&order=timestamp.desc`,{headers});
+      const hs=await r.json();
+      histList.innerHTML = hs.map(h=>`<div>${new Date(h.timestamp).toLocaleString()}: ${h.delta>0?'+':''}${h.delta}</div>`).join('')||'Keine Einträge.';
+    };
+
+    // Menu/Submenu/Cards
+    function renderMenu(){
+      menu.innerHTML='<h2>Hersteller wählen</h2>';
+      submenu.style.display='none'; cards.style.display='none';
+      buildFilters();
+      Array.from(new Set(allData.map(f=>f.hersteller)))
+        .filter(h=>!filters.hersteller||h===filters.hersteller)
+        .sort()
+        .forEach(m=>{
+          const b=document.createElement('button');
+          b.textContent=m; b.className='btn';
+          b.onclick=()=>showSub(m);
+          menu.appendChild(b);
+        });
+    }
+    function showSub(man){
+      curMan=man; menu.style.display='none'; submenu.style.display=''; cards.style.display='none';
+      submenu.innerHTML=
+        '<button class="btn btn-logout">← Zurück</button><br/>' +
+        '<button class="btn" id="bSer">Nach Serie</button>' +
+        '<button class="btn" id="bTyp" style="margin-left:.5rem">Nach Typ</button>';
+      document.getElementById('bSer').onclick=()=>showList('serie');
+      document.getElementById('bTyp').onclick=()=>showList('typ');
+      submenu.querySelector('.btn-logout').onclick=renderMenu;
+    }
+    function showList(field){
+      curField=field; cards.style.display=''; submenu.style.display='none'; cards.innerHTML='';
+      const back=document.createElement('button');
+      back.textContent='← Zurück'; back.className='btn btn-logout'; back.onclick=()=>showSub(curMan);
+      cards.appendChild(back);
+      const vals=Array.from(new Set(
+        allData.filter(f=>f.hersteller===curMan)
+               .flatMap(f=>field==='serie'?[f.serie]:[f.typ_a,f.typ_b].filter(Boolean))
+      )).sort();
+      vals.forEach(v=>{
+        const b=document.createElement('button');
+        b.textContent=v; b.className='btn'; b.onclick=()=>renderCards(field,v);
+        cards.appendChild(b);
+      });
+    }
+    function renderCards(field,val){
+      curValue=val; cards.innerHTML='';
+      const back=document.createElement('button');
+      back.textContent='← Zurück'; back.className='btn btn-logout'; back.onclick=()=>showList(field);
+      cards.appendChild(back);
+      allData.filter(f=>f.hersteller===curMan)
+             .filter(f=>field==='serie'?f.serie===val:[f.typ_a,f.typ_b].includes(val))
+             .forEach(f=>{
+        const c=document.createElement('div'); c.className='card';
+        c.innerHTML=`
+          <div class="title">${f.serie} ${f.groesse}</div>
+          <div class="wiki">${f.wiki||''}</div>
+          <div class="controls">
+            ${ adminMode
+               ? `<input class="stock-input" type="number" value="${f.bestand}"
+                    onchange="updateLog('${f.id}',parseInt(this.value,10)-${f.bestand})">`
+               : `<div>Bestand: <strong>${f.bestand}</strong></div>`
+            }
+            <button class="minus" onclick="updateLog('${f.id}',-1)">-1</button>
+            <button class="plus"  onclick="updateLog('${f.id}',+1)">+1</button>
+          </div>`;
+        cards.appendChild(c);
+      });
+    }
+
+    window.updateLog = async (id, delta) => {
+      if(!delta) return;
+      const f = allData.find(x=>x.id===id), neu = f.bestand + delta;
+      await fetch(`${URL}/rest/v1/felle?id=eq.${encodeURIComponent(id)}`, {
+        method:'PATCH', headers:{...headers,'Content-Type':'application/json'},
+        body: JSON.stringify({ bestand: neu })
+      });
+      await fetch(`${URL}/rest/v1/history`, {
+        method:'POST', headers:{...headers,'Content-Type':'application/json'},
+        body: JSON.stringify({ fell_id: id, delta })
+      });
+      f.bestand = neu;
+      if(curField && curValue) renderCards(curField,curValue);
+      else renderMenu();
+    };
+
+    renderMenu();
   });
   </script>
 </body>
